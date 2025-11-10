@@ -1,0 +1,375 @@
+{% extends "base.html" %}
+
+{% block title %}Health Status - {{ title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="bg-gray-800 rounded-lg shadow-lg p-6">
+        <h1 class="text-2xl font-bold mb-6 flex items-center">
+            <i class="fas fa-heartbeat mr-3 text-red-400"></i>
+            System Health Status
+        </h1>
+        
+        <!-- Overall Status -->
+        <div class="mb-8">
+            <div class="flex items-center space-x-4">
+                <div id="overall-status" class="px-4 py-2 rounded-full font-semibold">
+                    <i class="fas fa-spinner fa-spin mr-2"></i>
+                    Checking...
+                </div>
+                <div class="text-sm text-gray-400">
+                    Last updated: <span id="last-updated">--</span>
+                </div>
+                <button id="refresh-health" class="text-blue-400 hover:text-blue-300">
+                    <i class="fas fa-sync-alt"></i>
+                    Refresh
+                </button>
+            </div>
+        </div>
+        
+        <!-- Detailed Status Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Application Status -->
+            <div class="bg-gray-700 rounded-lg p-4">
+                <h3 class="text-lg font-semibold mb-3 flex items-center">
+                    <i class="fas fa-server mr-2 text-blue-400"></i>
+                    Application
+                </h3>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-300">Status:</span>
+                        <span id="app-status" class="font-medium">--</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-300">Version:</span>
+                        <span id="app-version" class="font-medium">--</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-300">Environment:</span>
+                        <span id="app-env" class="font-medium">--</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Discord Bot Status -->
+            <div class="bg-gray-700 rounded-lg p-4">
+                <h3 class="text-lg font-semibold mb-3 flex items-center">
+                    <i class="fab fa-discord mr-2 text-purple-400"></i>
+                    Discord Bot
+                </h3>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-300">Connection:</span>
+                        <span id="discord-connection" class="font-medium">--</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-300">Bot User:</span>
+                        <span id="discord-user" class="font-medium">--</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-300">Guilds:</span>
+                        <span id="discord-guilds" class="font-medium">--</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-300">Latency:</span>
+                        <span id="discord-latency" class="font-medium">--ms</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- OpenAI API Status -->
+            <div class="bg-gray-700 rounded-lg p-4">
+                <h3 class="text-lg font-semibold mb-3 flex items-center">
+                    <i class="fas fa-brain mr-2 text-green-400"></i>
+                    OpenAI API
+                </h3>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-300">Realtime API:</span>
+                        <span id="openai-realtime" class="font-medium">--</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-300">Session ID:</span>
+                        <span id="openai-session" class="font-medium text-xs">--</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-300">Connection:</span>
+                        <span id="openai-connection" class="font-medium">--</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Voice Channel Status -->
+            <div class="bg-gray-700 rounded-lg p-4">
+                <h3 class="text-lg font-semibold mb-3 flex items-center">
+                    <i class="fas fa-microphone mr-2 text-yellow-400"></i>
+                    Voice Channel
+                </h3>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-300">Connected:</span>
+                        <span id="voice-connected" class="font-medium">--</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-300">Channel:</span>
+                        <span id="voice-channel" class="font-medium">--</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-300">Listening:</span>
+                        <span id="voice-listening" class="font-medium">--</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-300">Speaking:</span>
+                        <span id="voice-speaking" class="font-medium">--</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- System Resources -->
+            <div class="bg-gray-700 rounded-lg p-4">
+                <h3 class="text-lg font-semibold mb-3 flex items-center">
+                    <i class="fas fa-chart-line mr-2 text-orange-400"></i>
+                    System
+                </h3>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-300">Web Server:</span>
+                        <span id="web-server" class="font-medium">--</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-300">Mode:</span>
+                        <span id="system-mode" class="font-medium">--</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-300">Uptime:</span>
+                        <span id="system-uptime" class="font-medium">--</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- API Health -->
+            <div class="bg-gray-700 rounded-lg p-4">
+                <h3 class="text-lg font-semibold mb-3 flex items-center">
+                    <i class="fas fa-plug mr-2 text-pink-400"></i>
+                    API Health
+                </h3>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-300">Health Check:</span>
+                        <span id="api-health" class="font-medium">--</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-300">Response Time:</span>
+                        <span id="api-response-time" class="font-medium">--ms</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-300">Endpoints:</span>
+                        <span id="api-endpoints" class="font-medium">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Raw Health Data (Collapsible) -->
+        <div class="mt-8">
+            <button id="toggle-raw-data" class="text-blue-400 hover:text-blue-300 mb-4">
+                <i class="fas fa-code mr-2"></i>
+                Show Raw Data
+            </button>
+            <div id="raw-data-container" class="hidden">
+                <div class="bg-gray-900 rounded-lg p-4 border border-gray-600">
+                    <h4 class="text-sm font-semibold mb-2 text-gray-300">Raw Health Response:</h4>
+                    <pre id="raw-health-data" class="text-xs text-gray-400 overflow-x-auto"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+class HealthPage {
+    constructor() {
+        this.startTime = Date.now();
+        this.init();
+    }
+    
+    init() {
+        this.setupEventListeners();
+        this.loadHealthData();
+        
+        // Auto-refresh every 10 seconds
+        this.interval = setInterval(() => {
+            this.loadHealthData();
+        }, 10000);
+    }
+    
+    setupEventListeners() {
+        const refreshBtn = document.getElementById('refresh-health');
+        const toggleRawBtn = document.getElementById('toggle-raw-data');
+        
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => this.loadHealthData());
+        }
+        
+        if (toggleRawBtn) {
+            toggleRawBtn.addEventListener('click', () => this.toggleRawData());
+        }
+    }
+    
+    async loadHealthData() {
+        try {
+            // Load both health and status data
+            const [healthResponse, statusResponse] = await Promise.all([
+                fetch('/api/health'),
+                fetch('/api/status')
+            ]);
+            
+            const healthData = await healthResponse.json();
+            const statusData = await statusResponse.json();
+            
+            this.updateHealthDisplay(healthData, statusData);
+            this.updateLastUpdated();
+            
+        } catch (error) {
+            console.error('Failed to load health data:', error);
+            this.showError('Failed to load health data');
+        }
+    }
+    
+    updateHealthDisplay(healthData, statusData) {
+        // Overall status
+        const overallStatus = document.getElementById('overall-status');
+        if (overallStatus) {
+            const isHealthy = healthData.status === 'healthy' && statusData.running;
+            overallStatus.className = `px-4 py-2 rounded-full font-semibold ${
+                isHealthy ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+            }`;
+            overallStatus.innerHTML = `
+                <i class="fas ${isHealthy ? 'fa-check-circle' : 'fa-exclamation-triangle'} mr-2"></i>
+                ${isHealthy ? 'Healthy' : 'Unhealthy'}
+            `;
+        }
+        
+        // Application status
+        this.updateElement('app-status', healthData.status || 'Unknown');
+        this.updateElement('app-version', healthData.version || 'Unknown');
+        this.updateElement('app-env', statusData.mode === 'passive' ? 'Development' : 'Production');
+        
+        // Discord status
+        if (statusData.discord_status) {
+            const discord = statusData.discord_status;
+            this.updateElement('discord-connection', discord.bot_user ? 'Connected' : 'Disconnected', discord.bot_user);
+            this.updateElement('discord-user', discord.bot_user || 'Not connected');
+            this.updateElement('discord-guilds', discord.guild_count || 0);
+            this.updateElement('discord-latency', discord.latency ? `${Math.round(discord.latency)}ms` : '--ms');
+        }
+        
+        // OpenAI status
+        if (statusData.openai_status && statusData.openai_status.realtime_status) {
+            const openai = statusData.openai_status.realtime_status;
+            this.updateElement('openai-realtime', openai.connected ? 'Connected' : 'Disconnected', openai.connected);
+            this.updateElement('openai-session', openai.session_id ? openai.session_id.substring(0, 16) + '...' : 'None');
+            this.updateElement('openai-connection', openai.connection_info ? openai.connection_info.state : 'Unknown');
+        }
+        
+        // Voice channel status
+        if (statusData.discord_status && statusData.discord_status.voice_connection) {
+            const voice = statusData.discord_status.voice_connection;
+            this.updateElement('voice-connected', voice.connected ? 'Yes' : 'No', voice.connected);
+            this.updateElement('voice-channel', voice.channel_name || 'None');
+            this.updateElement('voice-listening', voice.is_listening ? 'Yes' : 'No', voice.is_listening);
+            this.updateElement('voice-speaking', voice.is_speaking ? 'Yes' : 'No', voice.is_speaking);
+        }
+        
+        // System status
+        this.updateElement('web-server', statusData.web_server_running ? 'Running' : 'Stopped', statusData.web_server_running);
+        this.updateElement('system-mode', statusData.mode ? statusData.mode.charAt(0).toUpperCase() + statusData.mode.slice(1) : 'Unknown');
+        this.updateElement('system-uptime', this.formatUptime(Date.now() - this.startTime));
+        
+        // API health
+        this.updateElement('api-health', healthData.status || 'Unknown', healthData.status === 'healthy');
+        this.updateElement('api-response-time', '--ms'); // Would need timing data
+        this.updateElement('api-endpoints', 'Available');
+        
+        // Raw data
+        const rawDataElement = document.getElementById('raw-health-data');
+        if (rawDataElement) {
+            rawDataElement.textContent = JSON.stringify({health: healthData, status: statusData}, null, 2);
+        }
+    }
+    
+    updateElement(id, text, isPositive = null) {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = text;
+            
+            if (isPositive !== null) {
+                element.className = `font-medium ${isPositive ? 'text-green-400' : 'text-red-400'}`;
+            }
+        }
+    }
+    
+    updateLastUpdated() {
+        const element = document.getElementById('last-updated');
+        if (element) {
+            element.textContent = new Date().toLocaleTimeString();
+        }
+    }
+    
+    toggleRawData() {
+        const container = document.getElementById('raw-data-container');
+        const button = document.getElementById('toggle-raw-data');
+        
+        if (container && button) {
+            const isHidden = container.classList.contains('hidden');
+            
+            if (isHidden) {
+                container.classList.remove('hidden');
+                button.innerHTML = '<i class="fas fa-code mr-2"></i>Hide Raw Data';
+            } else {
+                container.classList.add('hidden');
+                button.innerHTML = '<i class="fas fa-code mr-2"></i>Show Raw Data';
+            }
+        }
+    }
+    
+    formatUptime(ms) {
+        const seconds = Math.floor(ms / 1000);
+        const minutes = Math.floor(seconds / 60);
+        const hours = Math.floor(minutes / 60);
+        
+        if (hours > 0) {
+            return `${hours}h ${minutes % 60}m`;
+        } else if (minutes > 0) {
+            return `${minutes}m ${seconds % 60}s`;
+        } else {
+            return `${seconds}s`;
+        }
+    }
+    
+    showError(message) {
+        const overallStatus = document.getElementById('overall-status');
+        if (overallStatus) {
+            overallStatus.className = 'px-4 py-2 rounded-full font-semibold bg-red-600 text-white';
+            overallStatus.innerHTML = `<i class="fas fa-exclamation-triangle mr-2"></i>${message}`;
+        }
+    }
+    
+    cleanup() {
+        if (this.interval) {
+            clearInterval(this.interval);
+        }
+    }
+}
+
+// Initialize health page
+const healthPage = new HealthPage();
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+    healthPage.cleanup();
+});
+</script>
+{% endblock %}

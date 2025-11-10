@@ -1,0 +1,124 @@
+# Development Docker Compose configuration
+version: '3.8'
+
+services:
+  # Development AI Co-Host Bot Service
+  ai-cohost-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: discord-ai-cohost-dev
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+      - "5678:5678"  # Debug port for Python debugging
+    environment:
+      # Development environment variables
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SECRET_KEY=${SECRET_KEY:-dev_secret_key_change_in_production}
+      
+      # Development settings
+      - ENV=development
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+      - LOG_FORMAT=text
+      
+      # Web server configuration
+      - WEB_HOST=0.0.0.0
+      - WEB_PORT=8000
+      
+      # File upload configuration
+      - UPLOAD_DIR=/app/uploads
+      - MAX_FILE_SIZE=52428800
+      - SUPPORTED_FORMATS=pdf,docx,txt,md,html,htm
+      
+      # Vector database configuration
+      - CHROMA_DB_PATH=/app/data/chroma
+      
+      # Context management
+      - MAX_CONTEXT_TOKENS=128000
+      - CONTEXT_WINDOW_STRATEGY=sliding
+      - SESSION_TIMEOUT=3600
+      
+    volumes:
+      # Mount source code for hot reloading
+      - ./src:/app/src
+      - ./uploads:/app/uploads
+      - ./data:/app/data
+      - ./logs:/app/logs
+      
+      # Mount requirements for development dependency changes
+      - ./requirements.txt:/app/requirements.txt
+    
+    depends_on:
+      - redis-dev
+    
+    networks:
+      - ai-cohost-dev-network
+    
+    # Development command with auto-reload
+    command: >
+      sh -c "pip install -r requirements.txt && 
+             python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m src.main"
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+  # Redis for development
+  redis-dev:
+    image: redis:7-alpine
+    container_name: ai-cohost-redis-dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - ai-cohost-dev-network
+    command: redis-server --appendonly yes
+
+  # PostgreSQL for development (optional, if you want to test with PostgreSQL)
+  postgres-dev:
+    image: postgres:15-alpine
+    container_name: ai-cohost-postgres-dev
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=aicohost_dev
+      - POSTGRES_USER=aicohost
+      - POSTGRES_PASSWORD=dev_password
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    networks:
+      - ai-cohost-dev-network
+    profiles:
+      - postgres  # Only start with --profile postgres
+
+  # Web-based Redis admin interface (optional)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: ai-cohost-redis-commander
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis-dev:6379
+    depends_on:
+      - redis-dev
+    networks:
+      - ai-cohost-dev-network
+    profiles:
+      - admin  # Only start with --profile admin
+
+volumes:
+  postgres_dev_data:
+    driver: local
+
+networks:
+  ai-cohost-dev-network:
+    driver: bridge

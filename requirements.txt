@@ -1,0 +1,48 @@
+# Core Dependencies
+discord.py>=2.3.0
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+websockets>=11.0.0
+openai>=1.3.0
+
+# Audio Processing
+pyaudio>=0.2.11
+numpy>=1.24.0
+soundfile>=0.12.0
+
+# Document Processing
+PyPDF2>=3.0.0
+python-docx>=0.8.11
+beautifulsoup4>=4.12.0
+requests>=2.31.0
+httpx>=0.25.0
+newspaper3k>=0.2.8
+
+# Vector Storage & Embeddings
+chromadb>=0.4.0
+sentence-transformers>=2.2.2
+
+# Web Framework
+jinja2>=3.1.0
+python-multipart>=0.0.6
+aiofiles>=23.0.0
+
+# Configuration & Environment
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# Logging & Monitoring
+loguru>=0.7.0
+structlog>=23.0.0
+
+# Async & Concurrency
+asyncio-mqtt>=0.16.0
+aioredis>=2.0.0
+
+# Development Dependencies
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+black>=23.0.0
+isort>=5.12.0
+mypy>=1.5.0

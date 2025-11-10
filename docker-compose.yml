@@ -1,0 +1,112 @@
+version: '3.8'
+
+services:
+  # Main AI Co-Host Bot Service
+  ai-cohost:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: discord-ai-cohost
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # Required environment variables (set these in .env file)
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SECRET_KEY=${SECRET_KEY}
+      
+      # Web server configuration
+      - WEB_HOST=0.0.0.0
+      - WEB_PORT=8000
+      
+      # File upload configuration
+      - UPLOAD_DIR=/app/uploads
+      - MAX_FILE_SIZE=52428800
+      
+      # Vector database configuration
+      - CHROMA_DB_PATH=/app/data/chroma
+      
+      # Context management
+      - MAX_CONTEXT_TOKENS=128000
+      - CONTEXT_WINDOW_STRATEGY=sliding
+      - SESSION_TIMEOUT=3600
+      
+      # Logging
+      - LOG_LEVEL=INFO
+      - LOG_FORMAT=json
+      
+      # Environment
+      - ENV=development
+      - DEBUG=true
+      
+      # Optional Redis for scaling (uncomment if using Redis)
+      # - REDIS_URL=redis://redis:6379
+      
+    volumes:
+      - ./uploads:/app/uploads
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ~/Desktop/discord-exports:/app/exports
+    
+    depends_on:
+      - redis
+    
+    networks:
+      - ai-cohost-network
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Redis for caching and session management (optional but recommended for scaling)
+  redis:
+    image: redis:7-alpine
+    container_name: ai-cohost-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - ai-cohost-network
+    command: redis-server --appendonly yes
+    
+    # Health check for Redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx reverse proxy (optional, for production deployment)
+  nginx:
+    image: nginx:alpine
+    container_name: ai-cohost-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro  # SSL certificates (if using HTTPS)
+    depends_on:
+      - ai-cohost
+    networks:
+      - ai-cohost-network
+    profiles:
+      - production  # Only start with --profile production
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  ai-cohost-network:
+    driver: bridge

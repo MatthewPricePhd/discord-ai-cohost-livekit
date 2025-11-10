@@ -1,0 +1,537 @@
+{% extends "base.html" %}
+
+{% block title %}Logs & Errors - {{ title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <div class="bg-gray-800 rounded-lg shadow-lg p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h1 class="text-2xl font-bold flex items-center">
+                <i class="fas fa-list mr-3 text-blue-400"></i>
+                Logs & Errors
+            </h1>
+            <div class="flex items-center space-x-4">
+                <button id="auto-refresh" class="px-3 py-1 bg-gray-700 rounded text-sm hover:bg-gray-600 transition-colors">
+                    <i class="fas fa-sync-alt mr-1"></i>
+                    Auto-refresh: <span id="auto-refresh-status">Off</span>
+                </button>
+                <button id="clear-logs" class="px-3 py-1 bg-red-600 rounded text-sm hover:bg-red-700 transition-colors">
+                    <i class="fas fa-trash mr-1"></i>
+                    Clear
+                </button>
+                <button id="copy-logs" class="px-3 py-1 bg-blue-600 rounded text-sm hover:bg-blue-700 transition-colors">
+                    <i class="fas fa-copy mr-1"></i>
+                    Copy All
+                </button>
+                <button id="claude-code-launch" class="px-3 py-1 bg-purple-600 rounded text-sm hover:bg-purple-700 transition-colors">
+                    <i class="fas fa-terminal mr-1"></i>
+                    Launch Claude Code
+                </button>
+            </div>
+        </div>
+        
+        <!-- Filter Controls -->
+        <div class="mb-4 flex items-center space-x-4">
+            <div class="flex items-center space-x-2">
+                <label class="text-sm text-gray-300">Level:</label>
+                <select id="log-level-filter" class="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white">
+                    <option value="">All</option>
+                    <option value="ERROR">Error</option>
+                    <option value="WARNING">Warning</option>
+                    <option value="INFO">Info</option>
+                    <option value="DEBUG">Debug</option>
+                </select>
+            </div>
+            <div class="flex items-center space-x-2">
+                <label class="text-sm text-gray-300">Component:</label>
+                <select id="component-filter" class="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white">
+                    <option value="">All</option>
+                    <option value="discord">Discord Bot</option>
+                    <option value="openai">OpenAI API</option>
+                    <option value="web">Web Server</option>
+                    <option value="voice">Voice Handler</option>
+                    <option value="main">Main App</option>
+                </select>
+            </div>
+            <div class="flex items-center space-x-2">
+                <label class="text-sm text-gray-300">Search:</label>
+                <input id="search-filter" type="text" placeholder="Search logs..." class="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white w-48">
+            </div>
+            <button id="apply-filters" class="px-3 py-1 bg-green-600 rounded text-sm hover:bg-green-700 transition-colors">
+                <i class="fas fa-filter mr-1"></i>
+                Apply
+            </button>
+        </div>
+        
+        <!-- Log Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+            <button id="filter-errors" class="bg-red-900/30 rounded-lg p-3 border border-red-800 hover:bg-red-900/50 transition-colors text-left">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-red-300">Errors</p>
+                        <p id="error-count" class="text-lg font-semibold text-red-400">0</p>
+                    </div>
+                    <i class="fas fa-exclamation-triangle text-red-400"></i>
+                </div>
+            </button>
+            <button id="filter-warnings" class="bg-yellow-900/30 rounded-lg p-3 border border-yellow-800 hover:bg-yellow-900/50 transition-colors text-left">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-yellow-300">Warnings</p>
+                        <p id="warning-count" class="text-lg font-semibold text-yellow-400">0</p>
+                    </div>
+                    <i class="fas fa-exclamation-triangle text-yellow-400"></i>
+                </div>
+            </button>
+            <button id="filter-info" class="bg-blue-900/30 rounded-lg p-3 border border-blue-800 hover:bg-blue-900/50 transition-colors text-left">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-blue-300">Info</p>
+                        <p id="info-count" class="text-lg font-semibold text-blue-400">0</p>
+                    </div>
+                    <i class="fas fa-info-circle text-blue-400"></i>
+                </div>
+            </button>
+            <button id="filter-debug" class="bg-green-900/30 rounded-lg p-3 border border-green-800 hover:bg-green-900/50 transition-colors text-left">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-green-300">Debug</p>
+                        <p id="debug-count" class="text-lg font-semibold text-green-400">0</p>
+                    </div>
+                    <i class="fas fa-bug text-green-400"></i>
+                </div>
+            </button>
+            <button id="filter-total" class="bg-gray-700 rounded-lg p-3 border border-gray-600 hover:bg-gray-600 transition-colors text-left">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-300">Total Logs</p>
+                        <p id="total-count" class="text-lg font-semibold text-white">0</p>
+                    </div>
+                    <i class="fas fa-list text-gray-400"></i>
+                </div>
+            </button>
+        </div>
+        
+        <!-- Logs Container -->
+        <div class="bg-gray-900 rounded-lg p-4 border border-gray-700">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-semibold text-gray-300">Recent Logs</h3>
+                <div class="flex items-center space-x-2 text-xs text-gray-400">
+                    <span>Last updated: <span id="last-updated">--</span></span>
+                    <button id="refresh-logs" class="text-blue-400 hover:text-blue-300">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div id="logs-container" class="bg-black rounded-lg p-3 h-96 overflow-y-auto font-mono text-sm">
+                <div class="text-gray-500 text-center py-8">
+                    <i class="fas fa-spinner fa-spin text-xl mb-2"></i>
+                    <p>Loading logs...</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Claude Code Integration Section -->
+        <div class="mt-6 bg-gray-700 rounded-lg p-4 border-l-4 border-purple-500">
+            <h3 class="text-lg font-semibold mb-3 flex items-center text-purple-300">
+                <i class="fas fa-robot mr-2"></i>
+                Claude Code CLI Integration
+            </h3>
+            <p class="text-gray-300 mb-4">
+                Use Claude Code CLI to debug issues and implement fixes. Copy error logs and launch Claude Code with context about the current issues.
+            </p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-2">
+                    <h4 class="font-medium text-gray-200">Quick Actions</h4>
+                    <button id="copy-errors-only" class="block w-full text-left px-3 py-2 bg-gray-600 rounded text-sm hover:bg-gray-500 transition-colors">
+                        <i class="fas fa-copy mr-2"></i>Copy Error Logs Only
+                    </button>
+                    <button id="copy-recent-context" class="block w-full text-left px-3 py-2 bg-gray-600 rounded text-sm hover:bg-gray-500 transition-colors">
+                        <i class="fas fa-clock mr-2"></i>Copy Last 50 Logs
+                    </button>
+                    <button id="generate-debug-report" class="block w-full text-left px-3 py-2 bg-gray-600 rounded text-sm hover:bg-gray-500 transition-colors">
+                        <i class="fas fa-file-medical-alt mr-2"></i>Generate Debug Report
+                    </button>
+                </div>
+                <div class="space-y-2">
+                    <h4 class="font-medium text-gray-200">Claude Code Commands</h4>
+                    <div class="bg-gray-800 rounded p-3 text-xs text-gray-300 font-mono">
+                        <p># Launch Claude Code with current context</p>
+                        <p class="text-green-400">claude-code --resume</p>
+                        <br>
+                        <p># Debug specific error</p>
+                        <p class="text-green-400">claude-code "Debug this error: [paste error]"</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading overlay -->
+<div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 hidden">
+    <div class="bg-gray-800 rounded-lg p-6 flex items-center space-x-3">
+        <div class="animate-spin rounded-full h-6 w-6 border-2 border-blue-400 border-t-transparent"></div>
+        <span class="text-white">Processing...</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+class LogsPage {
+    constructor() {
+        this.logs = [];
+        this.filteredLogs = [];
+        this.autoRefresh = false;
+        this.autoRefreshInterval = null;
+        this.init();
+    }
+    
+    init() {
+        this.setupEventListeners();
+        this.loadLogs();
+        console.log('Logs page initialized');
+    }
+    
+    setupEventListeners() {
+        // Refresh controls
+        document.getElementById('refresh-logs')?.addEventListener('click', () => this.loadLogs());
+        document.getElementById('auto-refresh')?.addEventListener('click', () => this.toggleAutoRefresh());
+        
+        // Filter controls
+        document.getElementById('apply-filters')?.addEventListener('click', () => this.applyFilters());
+        document.getElementById('search-filter')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.applyFilters();
+        });
+        
+        // Stat box filters (clickable)
+        document.getElementById('filter-errors')?.addEventListener('click', () => this.filterByLevel('ERROR'));
+        document.getElementById('filter-warnings')?.addEventListener('click', () => this.filterByLevel('WARNING'));
+        document.getElementById('filter-info')?.addEventListener('click', () => this.filterByLevel('INFO'));
+        document.getElementById('filter-debug')?.addEventListener('click', () => this.filterByLevel('DEBUG'));
+        document.getElementById('filter-total')?.addEventListener('click', () => this.filterByLevel(''));
+        
+        // Action controls
+        document.getElementById('clear-logs')?.addEventListener('click', () => this.clearLogs());
+        document.getElementById('copy-logs')?.addEventListener('click', () => this.copyAllLogs());
+        
+        // Claude Code integration
+        document.getElementById('claude-code-launch')?.addEventListener('click', () => this.launchClaudeCode());
+        document.getElementById('copy-errors-only')?.addEventListener('click', () => this.copyErrorsOnly());
+        document.getElementById('copy-recent-context')?.addEventListener('click', () => this.copyRecentContext());
+        document.getElementById('generate-debug-report')?.addEventListener('click', () => this.generateDebugReport());
+    }
+    
+    async loadLogs() {
+        try {
+            const response = await fetch('/api/logs');
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            
+            const data = await response.json();
+            this.logs = data.logs || [];
+            this.updateLogsDisplay();
+            this.updateStats();
+            this.updateLastUpdated();
+            
+        } catch (error) {
+            console.error('Failed to load logs:', error);
+            this.showError('Failed to load logs: ' + error.message);
+        }
+    }
+    
+    applyFilters() {
+        const levelFilter = document.getElementById('log-level-filter')?.value || '';
+        const componentFilter = document.getElementById('component-filter')?.value || '';
+        const searchFilter = document.getElementById('search-filter')?.value.toLowerCase() || '';
+        
+        this.filteredLogs = this.logs.filter(log => {
+            const matchesLevel = !levelFilter || log.level === levelFilter;
+            const matchesComponent = !componentFilter || log.logger.includes(componentFilter);
+            const matchesSearch = !searchFilter || 
+                log.message.toLowerCase().includes(searchFilter) ||
+                log.logger.toLowerCase().includes(searchFilter);
+            
+            return matchesLevel && matchesComponent && matchesSearch;
+        });
+        
+        this.updateLogsDisplay();
+        this.updateStats();
+    }
+    
+    filterByLevel(level) {
+        // Update the level filter dropdown
+        const levelFilter = document.getElementById('log-level-filter');
+        if (levelFilter) {
+            levelFilter.value = level;
+        }
+        
+        // Apply the filter
+        this.applyFilters();
+        
+        // Visual feedback - highlight the selected stat box
+        this.highlightSelectedFilter(level);
+    }
+    
+    highlightSelectedFilter(level) {
+        // Remove highlight from all stat boxes
+        document.querySelectorAll('[id^="filter-"]').forEach(box => {
+            box.classList.remove('ring-2', 'ring-blue-400');
+        });
+        
+        // Add highlight to selected box
+        const targetId = level === '' ? 'filter-total' : 
+                        level === 'ERROR' ? 'filter-errors' :
+                        level === 'WARNING' ? 'filter-warnings' :
+                        level === 'INFO' ? 'filter-info' :
+                        level === 'DEBUG' ? 'filter-debug' : '';
+        
+        const targetBox = document.getElementById(targetId);
+        if (targetBox) {
+            targetBox.classList.add('ring-2', 'ring-blue-400');
+        }
+    }
+    
+    updateLogsDisplay() {
+        const container = document.getElementById('logs-container');
+        if (!container) return;
+        
+        const logsToShow = this.filteredLogs.length > 0 ? this.filteredLogs : this.logs;
+        
+        if (logsToShow.length === 0) {
+            container.innerHTML = `
+                <div class="text-gray-500 text-center py-8">
+                    <i class="fas fa-inbox text-xl mb-2"></i>
+                    <p>No logs available</p>
+                </div>
+            `;
+            return;
+        }
+        
+        const logsHTML = logsToShow
+            .map(log => this.formatLogEntry(log))
+            .join('\n');
+        
+        container.innerHTML = `<pre class="text-xs leading-relaxed">${logsHTML}</pre>`;
+        container.scrollTop = container.scrollHeight;
+    }
+    
+    formatLogEntry(log) {
+        const timestamp = new Date(log.timestamp).toLocaleTimeString();
+        const level = log.level.padEnd(7);
+        const logger = log.logger.padEnd(20).substring(0, 20);
+        
+        let levelColor = 'text-gray-300';
+        if (log.level === 'ERROR') levelColor = 'text-red-400';
+        else if (log.level === 'WARNING') levelColor = 'text-yellow-400';
+        else if (log.level === 'INFO') levelColor = 'text-blue-400';
+        else if (log.level === 'DEBUG') levelColor = 'text-green-400';
+        
+        return `<span class="text-gray-500">${timestamp}</span> <span class="${levelColor}">${level}</span> <span class="text-purple-300">${logger}</span> <span class="text-gray-100">${log.message}</span>`;
+    }
+    
+    updateStats() {
+        const logsToAnalyze = this.filteredLogs.length > 0 ? this.filteredLogs : this.logs;
+        
+        const stats = logsToAnalyze.reduce((acc, log) => {
+            acc.total++;
+            acc[log.level.toLowerCase()] = (acc[log.level.toLowerCase()] || 0) + 1;
+            return acc;
+        }, { total: 0, error: 0, warning: 0, info: 0, debug: 0 });
+        
+        document.getElementById('error-count').textContent = stats.error;
+        document.getElementById('warning-count').textContent = stats.warning;
+        document.getElementById('info-count').textContent = stats.info;
+        document.getElementById('debug-count').textContent = stats.debug;
+        document.getElementById('total-count').textContent = stats.total;
+    }
+    
+    updateLastUpdated() {
+        const element = document.getElementById('last-updated');
+        if (element) {
+            element.textContent = new Date().toLocaleTimeString();
+        }
+    }
+    
+    toggleAutoRefresh() {
+        this.autoRefresh = !this.autoRefresh;
+        const button = document.getElementById('auto-refresh');
+        const status = document.getElementById('auto-refresh-status');
+        
+        if (this.autoRefresh) {
+            status.textContent = 'On';
+            button.classList.add('bg-green-600');
+            button.classList.remove('bg-gray-700');
+            this.autoRefreshInterval = setInterval(() => this.loadLogs(), 5000);
+        } else {
+            status.textContent = 'Off';
+            button.classList.remove('bg-green-600');
+            button.classList.add('bg-gray-700');
+            if (this.autoRefreshInterval) {
+                clearInterval(this.autoRefreshInterval);
+                this.autoRefreshInterval = null;
+            }
+        }
+    }
+    
+    async clearLogs() {
+        if (!confirm('Are you sure you want to clear all logs?')) return;
+        
+        try {
+            const response = await fetch('/api/logs', { method: 'DELETE' });
+            if (response.ok) {
+                this.logs = [];
+                this.filteredLogs = [];
+                this.updateLogsDisplay();
+                this.updateStats();
+                this.showToast('Logs cleared successfully', 'success');
+            } else {
+                throw new Error('Failed to clear logs');
+            }
+        } catch (error) {
+            this.showToast('Failed to clear logs: ' + error.message, 'error');
+        }
+    }
+    
+    copyAllLogs() {
+        const logsText = this.logs
+            .map(log => `${new Date(log.timestamp).toISOString()} ${log.level} ${log.logger} ${log.message}`)
+            .join('\n');
+        
+        this.copyToClipboard(logsText, 'All logs copied to clipboard');
+    }
+    
+    copyErrorsOnly() {
+        const errorLogs = this.logs
+            .filter(log => log.level === 'ERROR')
+            .map(log => `${new Date(log.timestamp).toISOString()} ${log.level} ${log.logger} ${log.message}`)
+            .join('\n');
+        
+        this.copyToClipboard(errorLogs, 'Error logs copied to clipboard');
+    }
+    
+    copyRecentContext() {
+        const recentLogs = this.logs
+            .slice(-50)
+            .map(log => `${new Date(log.timestamp).toISOString()} ${log.level} ${log.logger} ${log.message}`)
+            .join('\n');
+        
+        this.copyToClipboard(recentLogs, 'Recent logs copied to clipboard');
+    }
+    
+    async generateDebugReport() {
+        const loadingOverlay = document.getElementById('loading-overlay');
+        loadingOverlay?.classList.remove('hidden');
+        
+        try {
+            const errorLogs = this.logs.filter(log => log.level === 'ERROR').slice(-10);
+            const recentLogs = this.logs.slice(-20);
+            
+            const report = `# AI Co-Host Debug Report
+Generated: ${new Date().toISOString()}
+
+## Recent Errors (Last 10)
+${errorLogs.map(log => `- ${new Date(log.timestamp).toISOString()} [${log.logger}] ${log.message}`).join('\n')}
+
+## Recent Activity (Last 20 logs)
+${recentLogs.map(log => `${new Date(log.timestamp).toISOString()} ${log.level} ${log.logger} ${log.message}`).join('\n')}
+
+## System Status
+- Docker Container: Running
+- Discord Bot: ${this.getDiscordStatus()}
+- OpenAI API: ${this.getOpenAIStatus()}
+- Web Server: Running
+
+## Suggested Claude Code Commands
+\`\`\`bash
+# Debug the most recent error
+claude-code "Debug this Discord AI Co-Host error: [paste recent error above]"
+
+# General troubleshooting
+claude-code "Help me troubleshoot my Discord AI Co-Host bot. Here are the recent logs: [paste logs above]"
+
+# Resume previous Claude Code session
+claude-code --resume
+\`\`\`
+`;
+            
+            this.copyToClipboard(report, 'Debug report generated and copied to clipboard');
+        } catch (error) {
+            this.showToast('Failed to generate debug report: ' + error.message, 'error');
+        } finally {
+            loadingOverlay?.classList.add('hidden');
+        }
+    }
+    
+    getDiscordStatus() {
+        // This would need to be populated from actual status data
+        return 'Connected'; // Placeholder
+    }
+    
+    getOpenAIStatus() {
+        // This would need to be populated from actual status data
+        return 'Connected'; // Placeholder
+    }
+    
+    launchClaudeCode() {
+        // This would trigger a system command to launch Claude Code
+        // For now, we'll just show instructions
+        const instructions = `To launch Claude Code with the current context:
+
+1. Copy the debug report using "Generate Debug Report" button
+2. Open your terminal
+3. Run: claude-code --resume
+   OR
+   Run: claude-code "Debug my Discord AI Co-Host bot issues"
+4. Paste the debug report when prompted
+
+Claude Code will help you analyze the logs and implement fixes.`;
+        
+        alert(instructions);
+    }
+    
+    async copyToClipboard(text, successMessage) {
+        try {
+            await navigator.clipboard.writeText(text);
+            this.showToast(successMessage, 'success');
+        } catch (error) {
+            console.error('Failed to copy to clipboard:', error);
+            this.showToast('Failed to copy to clipboard', 'error');
+        }
+    }
+    
+    showToast(message, type) {
+        // Simple toast implementation
+        const toast = document.createElement('div');
+        toast.className = `fixed top-4 right-4 px-4 py-2 rounded shadow-lg z-50 ${
+            type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+        }`;
+        toast.textContent = message;
+        
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
+    }
+    
+    showError(message) {
+        const container = document.getElementById('logs-container');
+        if (container) {
+            container.innerHTML = `
+                <div class="text-red-500 text-center py-8">
+                    <i class="fas fa-exclamation-triangle text-xl mb-2"></i>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+    }
+}
+
+// Initialize logs page
+const logsPage = new LogsPage();
+</script>
+{% endblock %}

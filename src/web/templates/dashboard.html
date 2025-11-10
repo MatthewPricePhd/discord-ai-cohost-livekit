@@ -1,0 +1,466 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Main Dashboard Content -->
+<div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
+    <!-- Control Panel -->
+    <div class="xl:col-span-1">
+        <div class="bg-gray-800 rounded-lg shadow-lg p-6">
+            <h2 class="text-xl font-semibold mb-4 flex items-center">
+                <i class="fas fa-sliders-h mr-2 text-blue-400"></i>
+                Control Panel
+            </h2>
+            
+            <!-- Voice Channel Controls -->
+            <div class="space-y-4">
+                <div>
+                    <div class="flex items-center justify-between mb-2 min-h-[20px]">
+                        <label class="text-sm font-medium text-gray-300">
+                            Discord Voice Channel
+                        </label>
+                        <!-- Discord Voice Channel Message Area -->
+                        <div id="discord-voice-message-area" class="flex items-center">
+                            <div id="discord-voice-message" class="px-2 py-0.5 rounded text-xs flex items-center opacity-0 transition-opacity duration-200">
+                                <i id="discord-voice-message-icon" class="fas mr-1 text-xs"></i>
+                                <span id="discord-voice-message-text" class="text-xs"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex space-x-2">
+                        <select id="channel-select" class="flex-1 bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white">
+                            <option value="">Select a channel...</option>
+                        </select>
+                        <button id="join-btn" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-md transition-colors">
+                            <i class="fas fa-sign-in-alt"></i>
+                        </button>
+                        <button id="leave-btn" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-md transition-colors">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Split-Stack Mode Controls -->
+                <div>
+                    <div class="flex items-center justify-between mb-2 min-h-[20px]">
+                        <label class="text-sm font-medium text-gray-300">
+                            AI Mode (Split-Stack)
+                        </label>
+                        <!-- AI Mode Message Area -->
+                        <div id="ai-mode-message-area" class="flex items-center">
+                            <div id="ai-mode-message" class="px-2 py-0.5 rounded text-xs flex items-center opacity-0 transition-opacity duration-200">
+                                <i id="ai-mode-message-icon" class="fas mr-1 text-xs"></i>
+                                <span id="ai-mode-message-text" class="text-xs"></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Mode Selection Buttons -->
+                    <div class="space-y-2">
+                        <div class="grid grid-cols-1 gap-2">
+                            <button id="mode-passive" class="w-full bg-gray-600 hover:bg-gray-500 px-3 py-2 rounded-md transition-colors text-sm text-left mode-btn" data-mode="passive">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <i class="fas fa-ear mr-2 text-blue-400"></i>
+                                        <span class="font-medium">Passive Listening</span>
+                                    </div>
+                                    <span class="text-xs text-gray-400">STT Only</span>
+                                </div>
+                                <div class="text-xs text-gray-400 mt-1">Transcription-only mode, minimal cost</div>
+                            </button>
+                            
+                            <button id="mode-speech-to-speech" class="w-full bg-gray-600 hover:bg-gray-500 px-3 py-2 rounded-md transition-colors text-sm text-left mode-btn" data-mode="speech-to-speech">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <i class="fas fa-comments mr-2 text-green-400"></i>
+                                        <span class="font-medium">Speech-to-Speech</span>
+                                    </div>
+                                    <span class="text-xs text-gray-400">STT + TTS</span>
+                                </div>
+                                <div class="text-xs text-gray-400 mt-1">Full voice interaction with responses</div>
+                            </button>
+                            
+                            <button id="mode-ask-chatgpt" class="w-full bg-gray-600 hover:bg-gray-500 px-3 py-2 rounded-md transition-colors text-sm text-left mode-btn" data-mode="ask-chatgpt">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <i class="fas fa-keyboard mr-2 text-purple-400"></i>
+                                        <span class="font-medium">Ask ChatGPT</span>
+                                    </div>
+                                    <span class="text-xs text-gray-400">Text Only</span>
+                                </div>
+                                <div class="text-xs text-gray-400 mt-1">Text-only Q&A, fastest response</div>
+                            </button>
+                        </div>
+                        
+                        <!-- Current Mode Display -->
+                        <div class="bg-gray-700 rounded-lg p-3 border-l-4 border-blue-400">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <span class="font-medium text-white" id="current-mode">Passive Listening</span>
+                                    <p class="text-xs text-gray-400 mt-1" id="mode-description">
+                                        Transcription-only mode active
+                                    </p>
+                                </div>
+                                <div id="mode-status-indicator" class="w-3 h-3 bg-blue-400 rounded-full animate-pulse"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Manual Response -->
+                <div>
+                    <button id="force-response" class="w-full bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fas fa-robot mr-2"></i>
+                        Force AI Response
+                    </button>
+                </div>
+                
+                <!-- ChatGPT Query -->
+                <div>
+                    <div class="flex items-center justify-between mb-3 min-h-[24px]">
+                        <label class="text-sm font-medium text-gray-300">
+                            Ask ChatGPT
+                        </label>
+                        <!-- ChatGPT Message Area - Always reserves space -->
+                        <div id="chatgpt-message-area" class="min-h-[20px] flex items-center">
+                            <div id="chatgpt-message" class="px-2 py-0.5 rounded text-xs flex items-center opacity-0 transition-opacity duration-200">
+                                <i id="chatgpt-message-icon" class="fas mr-1 text-xs"></i>
+                                <span id="chatgpt-message-text" class="text-xs"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <textarea id="chatgpt-input" placeholder="Type your question here..." 
+                            class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white text-sm resize-none h-20"></textarea>
+                        <button id="chatgpt-send" class="w-full bg-green-600 hover:bg-green-700 px-4 py-2 rounded-md transition-colors">
+                            <i class="fas fa-paper-plane mr-2"></i>
+                            Ask ChatGPT
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Configuration Section -->
+        <div class="bg-gray-800 rounded-lg shadow-lg p-6 mt-6">
+            <h2 class="text-xl font-semibold mb-4 flex items-center">
+                <i class="fas fa-cog mr-2 text-orange-400"></i>
+                Configuration
+            </h2>
+            
+            <div class="space-y-4">
+                <!-- Model Choices -->
+                <div>
+                    <div class="flex items-center justify-between mb-2 min-h-[20px]">
+                        <label class="text-sm font-medium text-gray-300">
+                            Model Choices
+                        </label>
+                        <!-- Model Selection Message Area -->
+                        <div id="model-selection-message-area" class="flex items-center">
+                            <div id="model-selection-message" class="px-2 py-0.5 rounded text-xs flex items-center opacity-0 transition-opacity duration-200">
+                                <i id="model-selection-message-icon" class="fas mr-1 text-xs"></i>
+                                <span id="model-selection-message-text" class="text-xs"></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <!-- Text Processing Model -->
+                        <div>
+                            <label class="text-xs text-gray-400 mb-1 block">Text Processing</label>
+                            <select id="text-model-select" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white text-sm">
+                                <option value="gpt-5-mini" selected>GPT-5 Mini (Cost Efficient)</option>
+                                <option value="gpt-5">GPT-5 (Higher Accuracy)</option>
+                                <option value="gpt-4o-2024-08-06">GPT-4o (Legacy)</option>
+                            </select>
+                        </div>
+                        
+                        <!-- STT Model -->
+                        <div>
+                            <label class="text-xs text-gray-400 mb-1 block">Speech-to-Text</label>
+                            <select id="stt-model-select" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white text-sm">
+                                <option value="whisper-1" selected>Whisper-1 (Standard)</option>
+                                <option value="gpt-4o-mini-transcribe">GPT-4o Mini Transcribe</option>
+                            </select>
+                        </div>
+                        
+                        <!-- TTS Model -->
+                        <div>
+                            <label class="text-xs text-gray-400 mb-1 block">Text-to-Speech</label>
+                            <select id="tts-model-select" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white text-sm">
+                                <option value="tts-1" selected>TTS-1 (Cost Efficient)</option>
+                                <option value="tts-1-hd">TTS-1 HD (Higher Quality)</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Voice Selection for TTS -->
+                        <div>
+                            <label class="text-xs text-gray-400 mb-1 block">TTS Voice</label>
+                            <select id="tts-voice-select" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white text-sm">
+                                <option value="alloy" selected>Alloy</option>
+                                <option value="echo">Echo</option>
+                                <option value="fable">Fable</option>
+                                <option value="onyx">Onyx</option>
+                                <option value="nova">Nova</option>
+                                <option value="shimmer">Shimmer</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Session Spend Widget -->
+                <div>
+                    <div class="flex items-center justify-between mb-2 min-h-[20px]">
+                        <label class="text-sm font-medium text-gray-300">
+                            Session Spend
+                        </label>
+                        <!-- Session Spend Message Area -->
+                        <div id="session-spend-message-area" class="flex items-center">
+                            <div id="session-spend-message" class="px-2 py-0.5 rounded text-xs flex items-center opacity-0 transition-opacity duration-200">
+                                <i id="session-spend-message-icon" class="fas mr-1 text-xs"></i>
+                                <span id="session-spend-message-text" class="text-xs"></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <div class="flex space-x-2">
+                            <button id="session-start" class="flex-1 bg-green-600 hover:bg-green-700 px-3 py-2 rounded text-sm transition-colors">
+                                <i class="fas fa-play mr-1"></i>
+                                Start
+                            </button>
+                            <button id="session-stop" class="flex-1 bg-red-600 hover:bg-red-700 px-3 py-2 rounded text-sm transition-colors" disabled>
+                                <i class="fas fa-stop mr-1"></i>
+                                Stop & Calculate
+                            </button>
+                        </div>
+                        
+                        <div id="session-status" class="text-xs text-gray-400">
+                            Ready to start session tracking
+                        </div>
+                        
+                        <div id="session-summary" class="hidden bg-gray-700 rounded p-3">
+                            <div class="text-sm font-medium text-white mb-3">Session Results (Split-Stack):</div>
+                            <div id="session-cost" class="text-lg font-bold text-green-400 mb-3">$0.0000</div>
+                            
+                            <!-- Enhanced Cost Breakdown -->
+                            <div class="space-y-2">
+                                <div class="flex justify-between text-xs">
+                                    <span class="text-gray-300 flex items-center">
+                                        <i class="fas fa-microphone mr-1 text-blue-400"></i>
+                                        STT (Speech-to-Text):
+                                    </span>
+                                    <span id="session-stt-cost" class="text-green-400">$0.000</span>
+                                </div>
+                                <div class="flex justify-between text-xs">
+                                    <span class="text-gray-300 flex items-center">
+                                        <i class="fas fa-volume-up mr-1 text-purple-400"></i>
+                                        TTS (Text-to-Speech):
+                                    </span>
+                                    <span id="session-tts-cost" class="text-green-400">$0.000</span>
+                                </div>
+                                <div class="flex justify-between text-xs">
+                                    <span class="text-gray-300 flex items-center">
+                                        <i class="fas fa-brain mr-1 text-pink-400"></i>
+                                        Text Processing:
+                                    </span>
+                                    <span id="session-token-cost" class="text-green-400">$0.000</span>
+                                </div>
+                                <hr class="border-gray-600">
+                                <div class="text-xs text-gray-400">
+                                    <div class="flex justify-between">
+                                        <span>STT Minutes:</span>
+                                        <span id="session-stt-minutes">0.0</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>TTS Minutes:</span>
+                                        <span id="session-tts-minutes">0.0</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Total Tokens:</span>
+                                        <span id="session-total-tokens">0</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>API Requests:</span>
+                                        <span id="session-requests">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Middle Content Area - ChatGPT & Context -->
+    <div class="xl:col-span-2 flex flex-col space-y-6">
+        <!-- ChatGPT Response -->
+        <div class="bg-gray-800 rounded-lg shadow-lg p-6 flex-1 min-h-0">
+            <div class="flex items-center justify-between mb-3 min-h-[32px]">
+                <div class="flex items-center">
+                    <h3 class="text-lg font-semibold flex items-center">
+                        <i class="fas fa-robot mr-2 text-green-400"></i>
+                        ChatGPT Response
+                    </h3>
+                    <!-- ChatGPT Response Message Area -->
+                    <div id="chatgpt-response-message-area" class="ml-4 flex items-center">
+                        <div id="chatgpt-response-message" class="px-2 py-0.5 rounded text-xs flex items-center opacity-0 transition-opacity duration-200">
+                            <i id="chatgpt-response-message-icon" class="fas mr-1 text-xs"></i>
+                            <span id="chatgpt-response-message-text" class="text-xs"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex space-x-2">
+                    <button id="clear-chatgpt" class="bg-gray-600 hover:bg-gray-700 px-3 py-1 text-sm rounded transition-colors">
+                        <i class="fas fa-trash mr-1"></i>
+                        Clear
+                    </button>
+                    <button id="chatgpt-to-context" class="bg-indigo-600 hover:bg-indigo-700 px-3 py-1 text-sm rounded transition-colors">
+                        <i class="fas fa-share mr-1"></i>
+                        Send to Context
+                    </button>
+                </div>
+            </div>
+            
+            <div id="chatgpt-response" class="bg-gray-900 rounded-lg p-4 h-48 overflow-y-auto border border-gray-700">
+                <div class="text-gray-500 text-center py-4">
+                    <i class="fas fa-comment-dots text-xl mb-2"></i>
+                    <p>ChatGPT responses will appear here.</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Documents -->
+        <div class="bg-gray-800 rounded-lg shadow-lg p-6">
+            <div class="flex items-center justify-between mb-3 min-h-[32px]">
+                <div class="flex items-center">
+                    <h3 class="text-lg font-semibold flex items-center">
+                        <i class="fas fa-file-alt mr-2 text-blue-400"></i>
+                        Documents
+                    </h3>
+                    <!-- Documents Message Area -->
+                    <div id="documents-message-area" class="ml-4 flex items-center">
+                        <div id="documents-message" class="px-2 py-0.5 rounded text-xs flex items-center opacity-0 transition-opacity duration-200">
+                            <i id="documents-message-icon" class="fas mr-1 text-xs"></i>
+                            <span id="documents-message-text" class="text-xs"></span>
+                        </div>
+                    </div>
+                </div>
+                <button id="docs-to-context" class="bg-indigo-600 hover:bg-indigo-700 px-3 py-1 text-sm rounded transition-colors">
+                    <i class="fas fa-share mr-1"></i>
+                    Send to Context
+                </button>
+            </div>
+            
+            <div class="border-2 border-dashed border-gray-600 rounded-lg p-4 text-center mb-3">
+                <input type="file" id="document-upload" class="hidden" accept=".pdf,.docx,.txt,.md" multiple>
+                <button id="upload-btn" class="text-blue-400 hover:text-blue-300">
+                    <i class="fas fa-upload mr-2"></i>
+                    Upload files
+                </button>
+                <p class="text-xs text-gray-500 mt-1">
+                    PDF, DOCX, TXT, MD
+                </p>
+            </div>
+            
+            <!-- Document List -->
+            <div id="documents-list" class="space-y-2">
+                <div class="text-gray-500 text-center py-2 text-sm">
+                    No documents uploaded
+                </div>
+            </div>
+        </div>
+        
+        <!-- Context Summary -->
+        <div class="bg-gray-800 rounded-lg shadow-lg p-6 flex-[2] min-h-0 flex flex-col">
+            <div class="flex items-center justify-between mb-3 min-h-[32px] flex-shrink-0">
+                <div class="flex items-center">
+                    <h3 class="text-lg font-semibold flex items-center">
+                        <i class="fas fa-brain mr-2 text-pink-400"></i>
+                        Context Summary
+                    </h3>
+                    <!-- Context Summary Message Area -->
+                    <div id="context-summary-message-area" class="ml-4 flex items-center">
+                        <div id="context-summary-message" class="px-2 py-0.5 rounded text-xs flex items-center opacity-0 transition-opacity duration-200">
+                            <i id="context-summary-message-icon" class="fas mr-1 text-xs"></i>
+                            <span id="context-summary-message-text" class="text-xs"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex space-x-2">
+                    <button id="export-context" class="bg-purple-600 hover:bg-purple-700 px-3 py-1 text-sm rounded transition-colors" disabled>
+                        <i class="fas fa-download mr-1"></i>
+                        Export
+                    </button>
+                    <button id="generate-summary" class="bg-pink-600 hover:bg-pink-700 px-3 py-1 text-sm rounded transition-colors">
+                        <i class="fas fa-magic mr-1"></i>
+                        Generate
+                    </button>
+                </div>
+            </div>
+            
+            <div id="context-summary" class="bg-gray-900 rounded-lg p-4 overflow-y-auto border border-gray-700 flex-1 min-h-0">
+                <div class="text-gray-500 text-center py-8">
+                    <i class="fas fa-lightbulb text-xl mb-2"></i>
+                    <p>Context summary will appear here after conversation analysis.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right Content Area - Live Conversation -->
+    <div class="xl:col-span-2">
+        <!-- Live Transcript -->
+        <div class="bg-gray-800 rounded-lg shadow-lg p-6 h-full">
+            <div class="flex items-center justify-between mb-3 min-h-[32px]">
+                <div class="flex items-center">
+                    <h3 class="text-lg font-semibold flex items-center">
+                        <i class="fas fa-comment-alt mr-2 text-yellow-400"></i>
+                        Live Conversation
+                    </h3>
+                    <!-- Live Conversation Message Area -->
+                    <div id="live-conversation-message-area" class="ml-4 flex items-center">
+                        <div id="live-conversation-message" class="px-2 py-0.5 rounded text-xs flex items-center opacity-0 transition-opacity duration-200">
+                            <i id="live-conversation-message-icon" class="fas mr-1 text-xs"></i>
+                            <span id="live-conversation-message-text" class="text-xs"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex space-x-2">
+                    <button id="export-transcript" class="bg-blue-600 hover:bg-blue-700 px-3 py-1 text-sm rounded transition-colors" disabled>
+                        <i class="fas fa-download mr-1"></i>
+                        Export
+                    </button>
+                    <button id="refresh-transcript" class="text-gray-400 hover:text-white">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div id="transcript-container" class="bg-gray-900 rounded-lg p-4 h-[calc(100vh-16rem)] overflow-y-auto border border-gray-700">
+                <div class="text-gray-500 text-center py-8">
+                    <i class="fas fa-microphone-slash text-2xl mb-2"></i>
+                    <p>No conversation yet. Join a voice channel to start listening.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast notifications -->
+<div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2">
+    <!-- Toasts will be inserted here -->
+</div>
+
+<!-- Loading overlay -->
+<div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 hidden">
+    <div class="bg-gray-800 rounded-lg p-6 flex items-center space-x-3">
+        <div class="animate-spin rounded-full h-6 w-6 border-2 border-blue-400 border-t-transparent"></div>
+        <span class="text-white">Loading...</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='/js/dashboard.js') }}"></script>
+{% endblock %}
