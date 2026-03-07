@@ -7,8 +7,8 @@ from typing import Optional, Callable, Dict, Any
 import sys
 import platform
 
-import discord
-from discord.ext import commands
+import disnake
+from disnake.ext import commands
 
 from .voice_manager import VoiceManager
 from ..config import get_logger, settings
@@ -16,7 +16,7 @@ from ..config import get_logger, settings
 logger = get_logger(__name__)
 
 # Load opus library for voice support
-if not discord.opus.is_loaded():
+if not disnake.opus.is_loaded():
     if platform.system() == "Darwin":
         _opus_paths = ["/opt/homebrew/lib/libopus.dylib", "/usr/local/lib/libopus.dylib"]
     elif platform.system() == "Linux":
@@ -25,12 +25,12 @@ if not discord.opus.is_loaded():
         _opus_paths = ["opus"]
     for _path in _opus_paths:
         try:
-            discord.opus.load_opus(_path)
+            disnake.opus.load_opus(_path)
             logger.info("Loaded opus library", path=_path)
             break
         except OSError:
             continue
-    if not discord.opus.is_loaded():
+    if not disnake.opus.is_loaded():
         logger.warning("Could not load opus library — voice will not work")
 
 
@@ -38,7 +38,7 @@ class DiscordClient(commands.Bot):
     """Main Discord bot client for AI Co-Host functionality"""
     
     def __init__(self):
-        intents = discord.Intents.default()
+        intents = disnake.Intents.default()
         intents.voice_states = True
         intents.guilds = True
         # intents.message_content = True  # Commented out to avoid privileged intent requirement
@@ -67,17 +67,42 @@ class DiscordClient(commands.Bot):
         
         # Set bot status
         await self.change_presence(
-            activity=discord.Activity(
-                type=discord.ActivityType.listening,
+            activity=disnake.Activity(
+                type=disnake.ActivityType.listening,
                 name="for podcast hosts"
             ),
-            status=discord.Status.online
+            status=disnake.Status.online
         )
         
         self._bot_ready = True
     
     async def on_voice_state_update(self, member, before, after):
         """Handle voice state updates"""
+        # Detect when the bot itself gets disconnected
+        if member == self.user and before.channel and not after.channel:
+            # Only treat as real disconnect if:
+            # 1. voice_manager thinks it's connected
+            # 2. connection lock isn't held (not mid-handshake)
+            # 3. at least 10s have passed since connection (DAVE handshake grace period)
+            import time
+            seconds_since_connect = time.monotonic() - self.voice_manager._connected_at
+            is_handshaking = self.voice_manager._connection_lock.locked()
+            is_grace_period = seconds_since_connect < 10
+
+            if self.voice_manager.current_channel and not is_handshaking and not is_grace_period:
+                logger.warning("Bot was disconnected from voice channel",
+                              channel=before.channel.name,
+                              seconds_since_connect=round(seconds_since_connect, 1))
+                self.voice_manager.is_listening = False
+                self.voice_manager.is_speaking = False
+                self.voice_manager.voice_client = None
+                self.voice_manager.current_channel = None
+            else:
+                logger.debug("Ignoring voice state transition during handshake/grace period",
+                            channel=before.channel.name,
+                            is_handshaking=is_handshaking,
+                            is_grace_period=is_grace_period)
+
         # Log voice channel changes for debugging
         if before.channel != after.channel:
             logger.debug("Voice state update",
@@ -109,10 +134,10 @@ class DiscordClient(commands.Bot):
                 # Channel not in cache, try fetching from API
                 try:
                     channel = await self.fetch_channel(channel_id)
-                except discord.NotFound:
+                except disnake.NotFound:
                     logger.error("Voice channel not found", channel_id=channel_id)
                     return False
-            if not isinstance(channel, (discord.VoiceChannel, discord.StageChannel)):
+            if not isinstance(channel, (disnake.VoiceChannel, disnake.StageChannel)):
                 logger.error("Invalid voice channel", channel_id=channel_id)
                 return False
             
@@ -223,9 +248,9 @@ class CoHostCommands(commands.Cog):
         """Get bot status information"""
         status = self.bot.get_status()
         
-        embed = discord.Embed(
+        embed = disnake.Embed(
             title="AI Co-Host Status",
-            color=discord.Color.blue()
+            color=disnake.Color.blue()
         )
         
         embed.add_field(
@@ -246,10 +271,10 @@ class CoHostCommands(commands.Cog):
     @commands.command(name='commands')
     async def help_command(self, ctx):
         """Show available commands"""
-        embed = discord.Embed(
+        embed = disnake.Embed(
             title="AI Co-Host Commands",
             description="Available commands for the AI Co-Host bot",
-            color=discord.Color.green()
+            color=disnake.Color.green()
         )
         
         embed.add_field(

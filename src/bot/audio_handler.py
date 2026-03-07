@@ -8,7 +8,7 @@ from typing import AsyncGenerator, Optional, Callable
 
 import numpy as np
 import soundfile as sf
-from discord import AudioSource, PCMVolumeTransformer
+from disnake import AudioSource, PCMVolumeTransformer
 
 from ..config import get_logger, settings
 from .vad_processor import VADProcessor

@@ -6,7 +6,7 @@ import signal
 import sys
 from typing import Optional
 
-import discord
+import disnake
 from .bot import DiscordClient
 from .api import OpenAIClient
 from .web import create_web_app
@@ -168,19 +168,19 @@ class AICoHostApp:
             # Wait for bot to be ready with timeout
             timeout = 30  # seconds
             elapsed = 0
-            while not self.discord_client._ready and elapsed < timeout:
+            while not self.discord_client._bot_ready and elapsed < timeout:
                 await asyncio.sleep(0.5)
                 elapsed += 0.5
                 # Check if bot task already failed
                 if bot_task.done() and bot_task.exception():
                     raise bot_task.exception()
 
-            if not self.discord_client._ready:
+            if not self.discord_client._bot_ready:
                 logger.warning("Discord bot did not become ready within timeout — web server will continue running")
             else:
                 logger.info("Discord bot started successfully")
 
-        except discord.LoginFailure as e:
+        except disnake.LoginFailure as e:
             logger.error("Discord login failed — check your DISCORD_BOT_TOKEN", error=str(e))
             logger.info("Web server will continue running. Fix the token and restart.")
         except Exception as e:
