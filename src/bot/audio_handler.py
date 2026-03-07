@@ -11,6 +11,7 @@ import soundfile as sf
 from discord import AudioSource, PCMVolumeTransformer
 
 from ..config import get_logger, settings
+from .vad_processor import VADProcessor
 
 logger = get_logger(__name__)
 
@@ -182,21 +183,40 @@ class DiscordAudioSource(AudioSource):
 
 class AudioHandler:
     """Main audio handler for Discord AI Co-Host Bot"""
-    
+
     def __init__(self):
         self.sink: Optional[DiscordAudioSink] = None
         self.source: Optional[DiscordAudioSource] = None
         self.audio_callback: Optional[Callable[[bytes, int], None]] = None
-        
+        self.vad: Optional[VADProcessor] = None
+
+    def initialize_vad(self, **kwargs) -> VADProcessor:
+        """Initialize the Silero VAD processor"""
+        self.vad = VADProcessor.load(**kwargs)
+        return self.vad
+
     def set_audio_callback(self, callback: Callable[[bytes, int], None]) -> None:
         """Set callback for incoming audio data"""
         self.audio_callback = callback
         if self.sink:
-            self.sink.audio_callback = callback
+            self.sink.audio_callback = self._make_vad_callback(callback)
+
+    def _make_vad_callback(self, callback: Callable[[bytes, int], None]) -> Callable[[bytes, int], None]:
+        """Wrap the audio callback with VAD filtering"""
+        if self.vad is None:
+            return callback
+
+        def vad_filtered_callback(audio_data: bytes, user_id: int) -> None:
+            result = self.vad.process_audio(audio_data)
+            if result.is_speech:
+                callback(audio_data, user_id)
+
+        return vad_filtered_callback
     
     def create_audio_sink(self) -> DiscordAudioSink:
         """Create audio sink for capturing Discord audio"""
-        self.sink = DiscordAudioSink(self.audio_callback)
+        wrapped_callback = self._make_vad_callback(self.audio_callback) if self.audio_callback else None
+        self.sink = DiscordAudioSink(wrapped_callback)
         logger.info("Created Discord audio sink")
         return self.sink
     

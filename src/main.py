@@ -10,6 +10,7 @@ from .bot import DiscordClient
 from .api import OpenAIClient
 from .web import create_web_app
 from .config import setup_logging, get_logger, settings
+from .context.observer import ObserverAgent
 
 logger = get_logger(__name__)
 
@@ -20,6 +21,7 @@ class AICoHostApp:
     def __init__(self):
         self.discord_client: Optional[DiscordClient] = None
         self.openai_client: Optional[OpenAIClient] = None
+        self.observer_agent: Optional[ObserverAgent] = None
         self.web_app = None
         self.web_server = None
         self.is_passive_mode = True  # Start in passive mode
@@ -61,11 +63,15 @@ class AICoHostApp:
         # Initialize OpenAI client
         self.openai_client = OpenAIClient()
         
+        # Initialize Observer Agent
+        self.observer_agent = ObserverAgent()
+        await self.observer_agent.start()
+
         # Initialize web application
         from .web import WebApp
         web_app_instance = WebApp(self)
         self.web_app = web_app_instance.app
-        
+
         logger.info("Components initialized")
     
     async def _setup_audio_pipeline(self):
@@ -93,6 +99,8 @@ class AICoHostApp:
             if is_final:
                 logger.debug("Transcription received", text=text)
                 self.openai_client.add_conversation_turn("User", text)
+                if self.observer_agent:
+                    self.observer_agent.add_turn("User", text)
         
         # Setup status updates
         async def on_status_update(status_data: dict):
@@ -164,10 +172,14 @@ class AICoHostApp:
         self.running = False
         
         try:
+            # Stop Observer Agent
+            if self.observer_agent:
+                await self.observer_agent.stop()
+
             # Stop Discord bot
             if self.discord_client:
                 await self.discord_client.cleanup()
-            
+
             # Disconnect OpenAI
             if self.openai_client:
                 await self.openai_client.disconnect_realtime()

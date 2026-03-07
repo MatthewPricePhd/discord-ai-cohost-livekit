@@ -15,16 +15,19 @@ logger = get_logger(__name__)
 
 class RealtimeHandler:
     """Handles OpenAI Realtime API events and audio streaming"""
-    
+
+    # Supported voices for gpt-realtime GA
+    SUPPORTED_VOICES = ["alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse", "cedar", "marin"]
+
     def __init__(self):
         self.ws_manager = WebSocketManager()
         self.session_id: Optional[str] = None
         self.conversation_id: Optional[str] = None
-        
+
         # Audio settings
         self.audio_format = "pcm16"  # PCM 16-bit
         self.sample_rate = 24000     # 24kHz
-        
+
         # State tracking
         self.is_speaking = False
         self.is_listening = False
@@ -82,18 +85,25 @@ class RealtimeHandler:
         self.session_id = None
         self.conversation_id = None
     
-    async def _initialize_session(self):
-        """Initialize a new session with OpenAI Realtime API"""
+    async def _initialize_session(self, voice: str = "alloy"):
+        """Initialize a new session with OpenAI Realtime API (gpt-realtime GA)"""
+        if voice not in self.SUPPORTED_VOICES:
+            logger.warning("Unsupported voice requested, falling back to alloy", voice=voice)
+            voice = "alloy"
+
         session_config = {
             "type": "session.update",
             "session": {
                 "modalities": ["text", "audio"],
                 "instructions": self._get_system_instructions(),
-                "voice": "alloy",
+                "voice": voice,
                 "input_audio_format": self.audio_format,
                 "output_audio_format": self.audio_format,
                 "input_audio_transcription": {
-                    "model": "whisper-1"
+                    "model": "gpt-4o-mini-transcribe"
+                },
+                "input_audio_noise_reduction": {
+                    "type": "near_field"
                 },
                 "turn_detection": {
                     "type": "server_vad",
@@ -101,38 +111,44 @@ class RealtimeHandler:
                     "prefix_padding_ms": 300,
                     "silence_duration_ms": 500
                 },
-                "tools": [],  # Can add function calling tools later
+                "tools": [],
                 "tool_choice": "none"
             }
         }
-        
+
         await self.ws_manager.send_message(session_config)
-        logger.info("Sent session initialization")
+        logger.info("Sent session initialization", model=settings.openai_realtime_model, voice=voice)
     
     async def _initialize_transcription_session(self):
-        """Initialize a transcription-only session for split-stack architecture"""
+        """Initialize a transcription-only session for split-stack architecture.
+
+        Uses gpt-realtime-mini for cost-efficient passive transcription.
+        """
         session_config = {
             "type": "session.update",
             "session": {
-                "modalities": ["audio"],  # Audio input only for transcription
+                "modalities": ["audio"],
                 "instructions": "Transcribe audio input accurately. Do not generate responses.",
                 "input_audio_format": self.audio_format,
                 "input_audio_transcription": {
-                    "model": "whisper-1"  # Use Whisper for cost-efficient transcription
+                    "model": "gpt-4o-mini-transcribe"
+                },
+                "input_audio_noise_reduction": {
+                    "type": "near_field"
                 },
                 "turn_detection": {
                     "type": "server_vad",
                     "threshold": 0.5,
                     "prefix_padding_ms": 300,
-                    "silence_duration_ms": 800  # Longer silence for passive mode
+                    "silence_duration_ms": 800
                 },
                 "tools": [],
                 "tool_choice": "none"
             }
         }
-        
+
         await self.ws_manager.send_message(session_config)
-        logger.info("Sent transcription-only session initialization")
+        logger.info("Sent transcription-only session initialization", model="gpt-realtime-mini")
     
     def _get_system_instructions(self) -> str:
         """Get system instructions for the AI co-host"""

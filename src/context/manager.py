@@ -29,14 +29,14 @@ class ContextManager:
         self.note_taker = NoteTaker()
         
         # Context storage
-        self.conversation_history: deque = deque(maxlen=100)  # Last 100 turns
+        self.conversation_history: deque = deque(maxlen=200)  # Last 200 turns
         self.current_context: str = ""
         self.document_context: str = ""
         self.key_notes: List[Dict[str, Any]] = []
         
         # Context management settings
         self.max_context_tokens = settings.max_context_tokens
-        self.context_refresh_interval = 30  # seconds
+        self.context_refresh_interval = 45  # seconds
         self.summary_trigger_turns = 10  # Create summary after X new turns
         
         # Tracking variables
@@ -100,7 +100,7 @@ class ContextManager:
             logger.debug("Refreshing context")
             
             # Get recent conversation text
-            recent_conversation = self._get_recent_conversation(minutes=15)
+            recent_conversation = self._get_recent_conversation(minutes=30)
             
             if not recent_conversation:
                 return self._get_current_context_info()
@@ -115,7 +115,7 @@ class ContextManager:
             # Retrieve relevant documents
             relevant_docs = await self.retriever.get_relevant_documents(
                 topics=topics,
-                conversation_context=recent_conversation[:2000]  # Limit for efficiency
+                conversation_context=recent_conversation[:4000]  # Limit for efficiency
             )
             
             # Build document context
@@ -124,7 +124,7 @@ class ContextManager:
             # Create comprehensive context
             self.current_context = self._build_comprehensive_context(
                 conversation_summary=summary,
-                recent_conversation=recent_conversation[-3000:],  # Last ~3000 chars
+                recent_conversation=recent_conversation[-6000:],  # Last ~6000 chars
                 document_context=self.document_context
             )
             
@@ -215,7 +215,7 @@ class ContextManager:
             self.turns_since_summary >= self.summary_trigger_turns
         )
     
-    def _get_recent_conversation(self, minutes: int = 15) -> str:
+    def _get_recent_conversation(self, minutes: int = 30) -> str:
         """Get recent conversation as formatted text"""
         cutoff_time = datetime.utcnow() - timedelta(minutes=minutes)
         

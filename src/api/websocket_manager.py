@@ -26,10 +26,13 @@ class ConnectionState(Enum):
 class WebSocketManager:
     """Manages WebSocket connection to OpenAI Realtime API"""
     
-    def __init__(self):
+    def __init__(self, model_override: Optional[str] = None):
         self.websocket: Optional[WebSocketClientProtocol] = None
         self.state = ConnectionState.DISCONNECTED
-        self.url = settings.openai_realtime_url
+        if model_override:
+            self.url = f"wss://api.openai.com/v1/realtime?model={model_override}"
+        else:
+            self.url = settings.openai_realtime_url
         self.headers = settings.openai_realtime_headers
         
         # Event handlers

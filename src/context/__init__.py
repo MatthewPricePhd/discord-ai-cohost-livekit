@@ -5,5 +5,6 @@ from .manager import ContextManager
 from .summarizer import ConversationSummarizer
 from .retrieval import DocumentRetriever
 from .notes import NoteTaker
+from .observer import ObserverAgent
 
-__all__ = ["ContextManager", "ConversationSummarizer", "DocumentRetriever", "NoteTaker"]
+__all__ = ["ContextManager", "ConversationSummarizer", "DocumentRetriever", "NoteTaker", "ObserverAgent"]

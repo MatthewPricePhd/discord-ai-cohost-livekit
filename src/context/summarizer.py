@@ -5,19 +5,31 @@ import re
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
-from ..api.openai_client import OpenAIClient
-from ..config import get_logger
+from openai import AsyncOpenAI
+
+from ..config import get_logger, settings
 
 logger = get_logger(__name__)
+
+# Use gpt-5.3-instant for cost-efficient summarization
+SUMMARIZATION_MODEL = "gpt-5.3-instant"
 
 
 class ConversationSummarizer:
     """Handles conversation summarization and topic extraction"""
-    
+
     def __init__(self):
         self.openai_client = None  # Will be injected or created as needed
-    
-    async def _get_openai_client(self) -> OpenAIClient:
+        self._async_client: Optional[AsyncOpenAI] = None
+        self.progressive_summaries: List[str] = []
+
+    def _get_async_client(self) -> AsyncOpenAI:
+        """Get or create async OpenAI client for direct API calls"""
+        if not self._async_client:
+            self._async_client = AsyncOpenAI(api_key=settings.openai_api_key)
+        return self._async_client
+
+    async def _get_openai_client(self):
         """Get OpenAI client instance"""
         if not self.openai_client:
             from ..api.openai_client import OpenAIClient
@@ -39,9 +51,13 @@ class ConversationSummarizer:
             if not conversation_text or len(conversation_text.strip()) < 100:
                 return "No substantial conversation to summarize."
             
-            client = await self._get_openai_client()
-            
-            # Create summary prompt
+            client = self._get_async_client()
+
+            # Progressive summarization: if we have prior summaries, include them
+            prior_context = ""
+            if self.progressive_summaries:
+                prior_context = f"\n\nPrior summary of earlier conversation:\n{self.progressive_summaries[-1]}"
+
             prompt = f"""Summarize this podcast conversation segment in a way that would help an AI co-host understand the key topics, main points, and current discussion flow. Focus on:
 
 1. Main topics being discussed
@@ -50,21 +66,27 @@ class ConversationSummarizer:
 4. Current direction of the conversation
 
 Keep the summary concise but informative (around {max_length // 4} words).
-
+{prior_context}
 Conversation:
 {conversation_text}"""
-            
-            summary = await client.client.chat.completions.create(
-                model="gpt-5-mini",
+
+            summary = await client.chat.completions.create(
+                model=SUMMARIZATION_MODEL,
                 messages=[
                     {"role": "system", "content": "You are an expert at summarizing podcast conversations for AI co-hosts."},
                     {"role": "user", "content": prompt}
                 ],
-                max_tokens=max_length // 3,  # Rough token estimation
+                max_completion_tokens=max_length // 3,
                 temperature=0.3
             )
-            
+
             result = summary.choices[0].message.content.strip()
+
+            # Store for progressive summarization
+            self.progressive_summaries.append(result)
+            # Keep only last 5 progressive summaries
+            if len(self.progressive_summaries) > 5:
+                self.progressive_summaries = self.progressive_summaries[-5:]
             
             logger.debug("Conversation summarized",
                         original_length=len(conversation_text),
@@ -91,8 +113,8 @@ Conversation:
             if not conversation_text or len(conversation_text.strip()) < 50:
                 return []
             
-            client = await self._get_openai_client()
-            
+            client = self._get_async_client()
+
             prompt = f"""Extract the main topics and themes from this podcast conversation. Focus on:
 
 1. Specific subjects being discussed
@@ -104,14 +126,14 @@ Return {max_topics} or fewer topics as a simple list, one topic per line. Each t
 
 Conversation:
 {conversation_text[:2000]}"""  # Limit input for efficiency
-            
-            response = await client.client.chat.completions.create(
-                model="gpt-5-mini",
+
+            response = await client.chat.completions.create(
+                model=SUMMARIZATION_MODEL,
                 messages=[
                     {"role": "system", "content": "You are an expert at extracting topics from conversations."},
                     {"role": "user", "content": prompt}
                 ],
-                max_tokens=200,
+                max_completion_tokens=200,
                 temperature=0.2
             )
             
@@ -152,19 +174,19 @@ Conversation:
             if not text or len(text.strip()) < 20:
                 return "Brief conversation"
             
-            client = await self._get_openai_client()
-            
+            client = self._get_async_client()
+
             prompt = f"""Create a very brief summary of this conversation in {max_words} words or less. Focus on the main topic being discussed right now.
 
 Text: {text[:1000]}"""
-            
-            response = await client.client.chat.completions.create(
-                model="gpt-5-mini",
+
+            response = await client.chat.completions.create(
+                model=SUMMARIZATION_MODEL,
                 messages=[
                     {"role": "system", "content": "You create very concise summaries."},
                     {"role": "user", "content": prompt}
                 ],
-                max_tokens=max_words * 2,  # Rough buffer
+                max_completion_tokens=max_words * 2,
                 temperature=0.2
             )
             
@@ -195,8 +217,8 @@ Text: {text[:1000]}"""
             if not conversation_text or len(conversation_text.strip()) < 200:
                 return []
             
-            client = await self._get_openai_client()
-            
+            client = self._get_async_client()
+
             prompt = f"""Identify the key moments, important insights, or significant points in this podcast conversation. Look for:
 
 1. Important insights or revelations
@@ -209,14 +231,14 @@ Format as a list with timestamp (if available) and description.
 
 Conversation:
 {conversation_text}"""
-            
-            response = await client.client.chat.completions.create(
-                model="gpt-5-mini",
+
+            response = await client.chat.completions.create(
+                model=SUMMARIZATION_MODEL,
                 messages=[
                     {"role": "system", "content": "You identify key moments in conversations."},
                     {"role": "user", "content": prompt}
                 ],
-                max_tokens=400,
+                max_completion_tokens=400,
                 temperature=0.3
             )
             

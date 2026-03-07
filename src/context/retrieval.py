@@ -310,3 +310,44 @@ class DocumentRetriever:
                 
         except Exception as e:
             logger.error("Error updating retrieval settings", error=str(e))
+
+
+async def retrieve_relevant_docs(topics: List[str], vector_store, k: int = 5) -> List[Dict[str, Any]]:
+    """
+    Module-level convenience function to query a vector store for relevant docs.
+
+    Queries the vector store for each topic, deduplicates by chunk ID,
+    ranks by relevance score, and returns the top-k results.
+
+    Args:
+        topics: List of topic strings to search for
+        vector_store: A vector store instance with a search_similar method
+        k: Number of top results to return (default 5)
+
+    Returns:
+        List of document chunk dicts sorted by relevance
+    """
+    if not topics:
+        return []
+
+    all_results: List[Dict[str, Any]] = []
+    seen_ids: set = set()
+
+    for topic in topics:
+        try:
+            results = await vector_store.search_similar(query=topic, n_results=k)
+        except Exception as e:
+            logger.error("Error querying vector store for topic", topic=topic, error=str(e))
+            continue
+
+        for result in results:
+            chunk_id = result.get("id")
+            if chunk_id and chunk_id in seen_ids:
+                continue
+            if chunk_id:
+                seen_ids.add(chunk_id)
+            result["matched_topic"] = topic
+            all_results.append(result)
+
+    all_results.sort(key=lambda x: x.get("similarity", 0), reverse=True)
+    return all_results[:k]

@@ -169,9 +169,10 @@ class NoteTaker:
             if len(text) < 100:  # Too short for AI processing
                 return []
             
-            from ..api.openai_client import OpenAIClient
-            client = OpenAIClient()
-            
+            from openai import AsyncOpenAI
+            from ..config import settings
+            client = AsyncOpenAI(api_key=settings.openai_api_key)
+
             prompt = f"""Extract 3-5 key points from this conversation segment. Focus on:
 1. Important insights or conclusions
 2. Significant questions raised
@@ -182,9 +183,9 @@ Return each key point as a concise bullet point (1-2 sentences max).
 
 Conversation:
 {text[:1500]}"""  # Limit input length
-            
-            response = await client.client.chat.completions.create(
-                model="gpt-5-mini",
+
+            response = await client.chat.completions.create(
+                model="gpt-5.3-instant",
                 messages=[
                     {"role": "system", "content": "You extract key points from conversations concisely."},
                     {"role": "user", "content": prompt}
@@ -285,6 +286,30 @@ Conversation:
             logger.error("Error extracting insights", error=str(e))
             return []
     
+    def prioritize_notes(self, notes: List[str], current_topics: List[str]) -> List[str]:
+        """
+        Rank notes by relevance to current topics using keyword overlap.
+
+        Args:
+            notes: List of note strings
+            current_topics: List of current discussion topic strings
+
+        Returns:
+            Notes sorted by relevance (most relevant first)
+        """
+        if not notes or not current_topics:
+            return notes
+
+        topic_words = set()
+        for topic in current_topics:
+            topic_words.update(word.lower() for word in topic.split() if len(word) > 2)
+
+        def score(note: str) -> int:
+            note_words = set(word.lower() for word in note.split() if len(word) > 2)
+            return len(note_words & topic_words)
+
+        return sorted(notes, key=score, reverse=True)
+
     def _clean_sentence(self, sentence: str) -> str:
         """Clean and normalize a sentence"""
         try:
@@ -351,3 +376,73 @@ Conversation:
         except Exception as e:
             logger.error("Error creating note summary", error=str(e))
             return "Error creating summary."
+
+
+async def extract_key_points(turns: List[Dict[str, Any]], openai_client) -> List[str]:
+    """
+    Module-level function to extract notable facts/claims/data points from turns.
+
+    Args:
+        turns: List of conversation turn dicts with "speaker" and "text" keys
+        openai_client: An AsyncOpenAI client instance
+
+    Returns:
+        List of key point strings
+    """
+    if not turns:
+        return []
+
+    conversation_text = "\n".join(
+        f"{t.get('speaker', 'Unknown')}: {t.get('text', '')}" for t in turns
+    )
+
+    if len(conversation_text.strip()) < 50:
+        return []
+
+    try:
+        response = await openai_client.chat.completions.create(
+            model="gpt-5.3-instant",
+            messages=[
+                {"role": "system", "content": "Extract notable facts, claims, and data points from this conversation. Return one per line, concise."},
+                {"role": "user", "content": conversation_text[:3000]}
+            ],
+            max_completion_tokens=300,
+            temperature=0.2
+        )
+
+        points_text = response.choices[0].message.content.strip()
+        points = []
+        for line in points_text.split("\n"):
+            line = re.sub(r'^[\d\.\-\*\s]+', '', line).strip()
+            if line and len(line) > 10:
+                points.append(line)
+        return points[:10]
+
+    except Exception as e:
+        logger.error("Error in module-level extract_key_points", error=str(e))
+        return []
+
+
+def prioritize_notes(notes: List[str], current_topics: List[str]) -> List[str]:
+    """
+    Module-level function to rank notes by keyword overlap with current topics.
+
+    Args:
+        notes: List of note strings
+        current_topics: List of current discussion topic strings
+
+    Returns:
+        Notes sorted by relevance (most relevant first)
+    """
+    if not notes or not current_topics:
+        return notes
+
+    topic_words = set()
+    for topic in current_topics:
+        topic_words.update(word.lower() for word in topic.split() if len(word) > 2)
+
+    def score(note: str) -> int:
+        note_words = set(word.lower() for word in note.split() if len(word) > 2)
+        return len(note_words & topic_words)
+
+    return sorted(notes, key=score, reverse=True)

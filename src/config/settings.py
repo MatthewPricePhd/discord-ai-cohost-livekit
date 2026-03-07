@@ -21,10 +21,22 @@ class Settings(BaseSettings):
     
     # Discord Configuration
     discord_bot_token: str = Field(..., description="Discord bot token")
-    
-    # OpenAI Configuration  
-    openai_api_key: str = Field(..., description="OpenAI API key for GPT-5 Realtime")
-    openai_model: str = Field(default="gpt-4o-realtime-preview", description="OpenAI model to use")
+
+    # OpenAI Configuration
+    openai_api_key: str = Field(..., description="OpenAI API key")
+    openai_admin_key: Optional[str] = Field(default=None, description="OpenAI Admin key for Usage API")
+    openai_model: str = Field(default="gpt-realtime", description="OpenAI Realtime model")
+    openai_realtime_model: str = Field(default="gpt-realtime", description="Realtime voice model (gpt-realtime or gpt-realtime-mini)")
+    openai_reasoning_model: str = Field(default="gpt-5.4", description="Text reasoning model (gpt-5.4 or gpt-5.3-instant)")
+
+    # ElevenLabs Configuration
+    elevenlabs_api_key: Optional[str] = Field(default=None, description="ElevenLabs API key")
+    elevenlabs_voice_id: Optional[str] = Field(default=None, description="ElevenLabs voice ID")
+    elevenlabs_model: str = Field(default="eleven_flash_v2_5", description="ElevenLabs model (eleven_flash_v2_5 or eleven_multilingual_v2)")
+
+    # Provider Selection
+    tts_provider: str = Field(default="openai", description="TTS provider (openai or elevenlabs)")
+    stt_provider: str = Field(default="openai", description="STT provider (openai or elevenlabs)")
     
     # Web Application Configuration
     secret_key: str = Field(..., description="Secret key for web application")
@@ -45,7 +57,7 @@ class Settings(BaseSettings):
     pinecone_environment: Optional[str] = Field(default=None, description="Pinecone environment (optional)")
     
     # Context Management Configuration
-    max_context_tokens: int = Field(default=128000, description="Maximum context tokens for GPT-5")
+    max_context_tokens: int = Field(default=256000, description="Maximum context tokens for GPT-5.4 (supports up to 1M)")
     context_window_strategy: str = Field(default="sliding", description="Context window management strategy")
     session_timeout: int = Field(default=3600, description="Session timeout in seconds")
     
@@ -84,15 +96,20 @@ class Settings(BaseSettings):
     @property
     def openai_realtime_url(self) -> str:
         """Get OpenAI Realtime API WebSocket URL"""
-        return f"wss://api.openai.com/v1/realtime?model={self.openai_model}"
-    
+        return f"wss://api.openai.com/v1/realtime?model={self.openai_realtime_model}"
+
     @property
     def openai_realtime_headers(self) -> dict:
         """Get headers for OpenAI Realtime API"""
         return {
             "Authorization": f"Bearer {self.openai_api_key}",
-            "OpenAI-Beta": "realtime=v1"
+            "OpenAI-Beta": "realtime=v2"
         }
+
+    @property
+    def elevenlabs_available(self) -> bool:
+        """Check if ElevenLabs is configured"""
+        return self.elevenlabs_api_key is not None
 
 
 # Global settings instance

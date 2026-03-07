@@ -45,7 +45,11 @@ class VoiceManager:
                 
                 self.voice_client = await channel.connect()
                 self.current_channel = channel
-                
+
+                # Initialize VAD if not already loaded
+                if self.audio_handler.vad is None:
+                    self.audio_handler.initialize_vad()
+
                 # Set up audio capture
                 sink = self.audio_handler.create_audio_sink()
                 self.voice_client.listen(sink)

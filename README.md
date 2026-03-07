@@ -1,16 +1,19 @@
 # Discord AI Co-Host Bot
 
-An intelligent AI-powered podcast co-host that joins Discord voice channels to enhance live podcast recordings using GPT-5 Realtime API.
+An intelligent AI-powered podcast co-host that joins Discord voice channels to enhance live podcast recordings. Supports OpenAI gpt-realtime (GA), ElevenLabs, and GPT-5.4 for a modern, cost-efficient voice AI pipeline.
 
 ## Features
 
-- **Real-time Voice Interaction**: Uses OpenAI GPT-5 Realtime API for natural voice conversations
+- **Real-time Voice Interaction**: OpenAI gpt-realtime (GA) with gpt-realtime-mini for cost-efficient passive mode
+- **Multi-Provider TTS/STT**: Hot-swap between OpenAI and ElevenLabs (Flash v2.5, Scribe v2) from the dashboard
+- **ML-Based Voice Detection**: Silero VAD replaces amplitude-based detection for reliable speech detection
+- **GPT-5.4 Reasoning**: 1M token context window with gpt-5.3-instant for cost-efficient background tasks
+- **Observer Agent**: Background conversation analysis — talking points, fact-checks, and topic suggestions surfaced to the dashboard
 - **Discord Integration**: Joins voice channels as a participant, not just a bot
-- **Intelligent Context Management**: Maintains conversation context and integrates uploaded research materials  
-- **Web Dashboard**: Real-time control interface for podcast hosts
+- **Intelligent Context Management**: Progressive summarization, topic extraction, document RAG, and key-point notes
+- **Web Dashboard**: Real-time controls with provider/voice/model selectors, cost tracking, and AI insights panel
 - **Document Processing**: Upload PDFs, DOCX, and other documents for AI context enhancement
-- **Passive/Active Modes**: Listen quietly or actively participate on demand
-- **Context-Aware Responses**: References conversation history and research materials
+- **Split-Stack Architecture**: Passive Listening, Speech-to-Speech, and Ask ChatGPT modes
 
 ## Quick Start
 
@@ -18,7 +21,9 @@ An intelligent AI-powered podcast co-host that joins Discord voice channels to e
 
 - Docker and Docker Compose
 - Discord Bot Token ([Create a Discord App](https://discord.com/developers/applications))
-- OpenAI API Key with GPT-5 Realtime API access
+- OpenAI API Key with Realtime API access
+- OpenAI Admin Key (optional, for Usage API cost tracking)
+- ElevenLabs API Key (optional, for ElevenLabs TTS/STT)
 
 ### 1. Clone and Setup
 
@@ -42,6 +47,20 @@ Edit `.env` file:
 DISCORD_BOT_TOKEN=your_discord_bot_token_here
 OPENAI_API_KEY=your_openai_api_key_here
 SECRET_KEY=your_secret_key_here
+
+# Optional — for Usage API cost tracking
+OPENAI_ADMIN_KEY=your_openai_admin_key_here
+
+# Optional — enables ElevenLabs as TTS/STT provider
+ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
+
+# Provider selection (openai or elevenlabs)
+TTS_PROVIDER=openai
+STT_PROVIDER=openai
+
+# Model selection
+OPENAI_REALTIME_MODEL=gpt-realtime
+OPENAI_REASONING_MODEL=gpt-5.4
 ```
 
 ### 3. Run with Docker
@@ -132,11 +151,17 @@ python -m src.main
 |----------|---------|-------------|
 | `DISCORD_BOT_TOKEN` | Required | Discord bot token |
 | `OPENAI_API_KEY` | Required | OpenAI API key |
+| `OPENAI_ADMIN_KEY` | Optional | OpenAI Admin key for Usage API cost tracking |
 | `SECRET_KEY` | Required | Web app secret key |
+| `OPENAI_REALTIME_MODEL` | gpt-realtime | Realtime voice model (`gpt-realtime` or `gpt-realtime-mini`) |
+| `OPENAI_REASONING_MODEL` | gpt-5.4 | Text reasoning model (`gpt-5.4` or `gpt-5.3-instant`) |
+| `ELEVENLABS_API_KEY` | Optional | ElevenLabs API key for TTS/STT |
+| `ELEVENLABS_MODEL` | eleven_flash_v2_5 | ElevenLabs model (`eleven_flash_v2_5` or `eleven_multilingual_v2`) |
+| `TTS_PROVIDER` | openai | TTS provider (`openai` or `elevenlabs`) |
+| `STT_PROVIDER` | openai | STT provider (`openai` or `elevenlabs`) |
 | `WEB_PORT` | 8000 | Web server port |
 | `MAX_FILE_SIZE` | 50MB | Maximum upload file size |
-| `SUPPORTED_FORMATS` | pdf,docx,txt,md | Supported document formats |
-| `MAX_CONTEXT_TOKENS` | 128000 | GPT-5 context window limit |
+| `MAX_CONTEXT_TOKENS` | 256000 | Context window token limit |
 | `LOG_LEVEL` | INFO | Logging level |
 
 ### Discord Permissions
@@ -154,22 +179,30 @@ The bot requires these Discord permissions:
 ### Components
 
 - **Discord Client**: Manages voice channel connections and audio streaming
-- **OpenAI Realtime API**: Handles real-time voice processing with GPT-5
-- **Web Interface**: FastAPI-based dashboard for host controls
+- **Silero VAD**: ML-based voice activity detection (replaces amplitude thresholds)
+- **OpenAI Realtime API**: gpt-realtime (GA) for voice processing, gpt-realtime-mini for passive mode
+- **Provider Layer**: Pluggable TTS/STT with OpenAI and ElevenLabs implementations
+- **GPT-5.4 Reasoning**: Text reasoning with 1M token context window
+- **Observer Agent**: Background conversation analysis with insight generation
+- **Web Interface**: FastAPI-based dashboard with provider/model selectors
 - **Document Processor**: Extracts and chunks uploaded documents
 - **Vector Store**: ChromaDB for semantic document search
-- **Context Manager**: Intelligent context window management
+- **Context Manager**: Progressive summarization, topic extraction, document RAG, key-point notes
 
 ### Audio Pipeline
 
 ```
-Discord Voice → Audio Processing → OpenAI Realtime API → AI Response → Discord Voice
+Discord Voice → Silero VAD → Audio Processing → OpenAI Realtime API → AI Response → Discord Voice
+                                                      ↕
+                                              (gpt-realtime or gpt-realtime-mini)
 ```
 
 ### Context Flow
 
 ```
-Conversation → Summarization → Topic Extraction → Document Retrieval → Context Window → AI Response
+Conversation → Summarizer (gpt-5.3-instant) → Topic Extraction → Document RAG → Context Window
+     ↓
+Observer Agent → Talking Points / Fact-Checks / Insights → Dashboard
 ```
 
 ## API Documentation
@@ -185,6 +218,13 @@ When running in development mode, API documentation is available at:
 - `POST /api/mode/toggle` - Toggle passive/active mode
 - `POST /api/documents/upload` - Upload documents
 - `GET /api/conversation/transcript` - Get conversation transcript
+- `GET /api/providers` - Get current TTS/STT providers and models
+- `POST /api/providers/tts` - Switch TTS provider
+- `POST /api/providers/stt` - Switch STT provider
+- `POST /api/providers/reasoning-model` - Switch reasoning model
+- `GET /api/voices` - List available voices for current TTS provider
+- `GET /api/observer/insights` - Get AI-generated conversation insights
+- `POST /api/observer/configure` - Configure observer analysis frequency
 
 ## Deployment
 
@@ -222,13 +262,19 @@ docker-compose --profile production up -d
 
 ## Cost Estimation
 
-### OpenAI API Costs (Approximate)
+### API Costs (Approximate)
 
-- **GPT-5 Realtime API**: ~$0.06-0.12 per minute of active conversation
-- **Text Embeddings**: ~$0.10 per 1M tokens for document processing
-- **Chat Completions**: ~$0.03 per 1K tokens for summarization
+| Component | Provider | Cost |
+|-----------|----------|------|
+| Passive STT (per min) | gpt-realtime-mini | ~$0.02 |
+| Active voice (per min) | gpt-realtime | ~$0.30 |
+| TTS output (per min) | ElevenLabs Flash v2.5 | ~$0.06 |
+| TTS output (per min) | OpenAI TTS-1 | ~$0.015 |
+| Text reasoning (per 1K tokens) | gpt-5.4 | ~$0.005 |
+| Text reasoning (per 1K tokens) | gpt-5.3-instant | ~$0.002 |
+| Summarization (per 1K tokens) | gpt-5.3-instant | ~$0.002 |
 
-**Estimated cost for 60-minute podcast**: $5-10 (mostly realtime API usage)
+**Estimated cost for 60-minute podcast**: ~$2-4 (with split-stack optimization)
 
 ### Resource Requirements
 
@@ -247,9 +293,14 @@ docker-compose --profile production up -d
    - Ensure bot is in the same server as the voice channel
 
 2. **OpenAI API errors**
-   - Verify API key has GPT-5 Realtime API access
+   - Verify API key has Realtime API access
    - Check API usage limits and billing
    - Monitor rate limits
+
+5. **ElevenLabs not working**
+   - Verify `ELEVENLABS_API_KEY` is set in `.env`
+   - Check your ElevenLabs plan has sufficient credits
+   - Ensure `TTS_PROVIDER=elevenlabs` or `STT_PROVIDER=elevenlabs` is set
 
 3. **Audio quality issues**
    - Check network latency
@@ -311,8 +362,10 @@ docker-compose logs -f ai-cohost
 ## Roadmap
 
 - [ ] Multi-language support
-- [ ] Custom voice training
+- [ ] Custom voice training / voice cloning (ElevenLabs)
 - [ ] Twitch/YouTube chat integration
 - [ ] Advanced analytics dashboard
 - [ ] Plugin system for extensions
 - [ ] Mobile app for remote control
+- [ ] Multi-agent handoffs (inspired by LiveKit patterns)
+- [ ] SIP/phone call integration

@@ -7,6 +7,7 @@ from typing import Optional, Dict, Any, List
 from openai import AsyncOpenAI
 
 from .realtime_handler import RealtimeHandler
+from .websocket_manager import WebSocketManager
 from ..config import get_logger, settings
 
 logger = get_logger(__name__)
@@ -29,17 +30,29 @@ class OpenAIClient:
         self.session_costs = {
             "stt_minutes": 0.0,
             "tts_minutes": 0.0,
+            "tts_characters": 0,
+            "stt_elevenlabs_minutes": 0.0,
             "tokens_in": 0,
             "tokens_out": 0,
-            "requests": 0
+            "requests": 0,
+            "provider_usage": {
+                "openai": {"stt_minutes": 0.0, "tts_minutes": 0.0, "tokens_in": 0, "tokens_out": 0},
+                "elevenlabs": {"tts_characters": 0, "stt_minutes": 0.0}
+            }
         }
         
     async def connect_realtime(self) -> bool:
-        """Connect to OpenAI Realtime API"""
+        """Connect to OpenAI Realtime API using full gpt-realtime model"""
         try:
+            # Use full gpt-realtime for speech-to-speech (higher quality)
+            self.realtime_handler.ws_manager = WebSocketManager(
+                model_override=settings.openai_realtime_model
+            )
+            self.realtime_handler._setup_handlers()
             success = await self.realtime_handler.connect()
             if success:
-                logger.info("Connected to OpenAI Realtime API")
+                logger.info("Connected to OpenAI Realtime API",
+                           model=settings.openai_realtime_model)
             else:
                 logger.error("Failed to connect to OpenAI Realtime API")
             return success
@@ -81,36 +94,45 @@ class OpenAIClient:
         
         # Handle mode-specific setup
         if mode == "passive":
-            # Start transcription-only mode
+            # Use gpt-realtime-mini for cost-efficient passive transcription
+            if previous_mode == "speech-to-speech":
+                await self.stop_transcription()
             await self.start_transcription()
         elif mode == "speech-to-speech":
-            # Ensure both STT and TTS capabilities are ready
-            await self.start_transcription()
+            # Use full gpt-realtime for high-quality speech-to-speech
+            if self.transcription_active:
+                await self.stop_transcription()
+            await self.connect_realtime()
         elif mode == "ask-chatgpt":
             # Text-only mode, no audio processing needed
-            pass
+            if self.transcription_active:
+                await self.stop_transcription()
+            await self.disconnect_realtime()
         
         return True
     
     async def start_transcription(self) -> bool:
-        """Start STT transcription using gpt-4o-mini-transcribe"""
+        """Start STT transcription using gpt-realtime-mini for cost efficiency"""
         try:
             if self.transcription_active:
                 logger.debug("Transcription already active")
                 return True
-            
-            # Connect to realtime API with transcription intent
-            # Use the efficient realtime transcription endpoint
+
+            # Use gpt-realtime-mini for passive transcription (cost-efficient)
+            self.realtime_handler.ws_manager = WebSocketManager(
+                model_override="gpt-realtime-mini"
+            )
+            self.realtime_handler._setup_handlers()
             success = await self.realtime_handler.connect_transcription_mode()
-            
+
             if success:
                 self.transcription_active = True
-                logger.info("STT transcription started", model="gpt-4o-mini-transcribe")
+                logger.info("STT transcription started", model="gpt-realtime-mini")
             else:
                 logger.error("Failed to start STT transcription")
-            
+
             return success
-            
+
         except Exception as e:
             logger.error("Error starting transcription", error=str(e))
             return False
@@ -138,6 +160,7 @@ class OpenAIClient:
             # Track STT usage for cost calculation
             audio_duration_minutes = len(audio_data) / (16000 * 2 * 60)  # Assume 16kHz mono 16-bit
             self.session_costs["stt_minutes"] += audio_duration_minutes
+            self.track_provider_usage("openai", "stt_minutes", audio_duration_minutes)
             
             # Use Whisper API for transcription (cost-efficient)
             response = await self.client.audio.transcriptions.create(
@@ -168,6 +191,7 @@ class OpenAIClient:
             word_count = len(text.split())
             estimated_minutes = word_count / 150
             self.session_costs["tts_minutes"] += estimated_minutes
+            self.track_provider_usage("openai", "tts_minutes", estimated_minutes)
             
             # Generate TTS using OpenAI TTS API
             response = await self.client.audio.speech.create(
@@ -228,42 +252,90 @@ class OpenAIClient:
             logger.error("Error in speech-to-speech interaction", error=str(e))
             return b""
     
-    def get_session_costs(self) -> Dict[str, float]:
-        """Get current session cost breakdown"""
-        # Cost rates (USD)
-        stt_rate = 0.006  # per minute
-        tts_rate = 0.015  # per minute  
-        token_rate_in = 0.30 / 1000  # gpt-5-mini input per token
-        token_rate_out = 0.60 / 1000  # gpt-5-mini output per token
-        
-        costs = {
-            "stt_cost": self.session_costs["stt_minutes"] * stt_rate,
-            "tts_cost": self.session_costs["tts_minutes"] * tts_rate,
-            "token_cost": (self.session_costs["tokens_in"] * token_rate_in + 
-                          self.session_costs["tokens_out"] * token_rate_out),
-            "total_cost": 0.0
+    def get_session_costs(self) -> Dict[str, Any]:
+        """Get current session cost breakdown with per-provider detail"""
+        # OpenAI rates (USD)
+        openai_stt_rate = 0.006  # per minute (whisper-1)
+        openai_tts_rate = 0.015  # per minute (tts-1)
+        # Reasoning model token rates (per token)
+        token_rate_in = 1.25 / 1_000_000   # gpt-5.4: $1.25/1M input
+        token_rate_out = 5.00 / 1_000_000   # gpt-5.4: $5.00/1M output
+
+        # ElevenLabs rates (approximate, varies by plan)
+        elevenlabs_tts_rate_per_char = 0.30 / 1000  # ~$0.30 per 1K characters
+        elevenlabs_stt_rate = 0.005  # per minute (Scribe)
+
+        provider_usage = self.session_costs.get("provider_usage", {})
+        openai_usage = provider_usage.get("openai", {})
+        elevenlabs_usage = provider_usage.get("elevenlabs", {})
+
+        openai_stt_cost = openai_usage.get("stt_minutes", 0.0) * openai_stt_rate
+        openai_tts_cost = openai_usage.get("tts_minutes", 0.0) * openai_tts_rate
+        openai_token_cost = (
+            openai_usage.get("tokens_in", 0) * token_rate_in +
+            openai_usage.get("tokens_out", 0) * token_rate_out
+        )
+
+        elevenlabs_tts_cost = elevenlabs_usage.get("tts_characters", 0) * elevenlabs_tts_rate_per_char
+        elevenlabs_stt_cost = elevenlabs_usage.get("stt_minutes", 0.0) * elevenlabs_stt_rate
+
+        total_stt_cost = openai_stt_cost + elevenlabs_stt_cost
+        total_tts_cost = openai_tts_cost + elevenlabs_tts_cost
+        total_token_cost = openai_token_cost
+        total_cost = total_stt_cost + total_tts_cost + total_token_cost
+
+        return {
+            "stt_cost": round(total_stt_cost, 6),
+            "tts_cost": round(total_tts_cost, 6),
+            "token_cost": round(total_token_cost, 6),
+            "total_cost": round(total_cost, 6),
+            "by_provider": {
+                "openai": {
+                    "stt_cost": round(openai_stt_cost, 6),
+                    "tts_cost": round(openai_tts_cost, 6),
+                    "token_cost": round(openai_token_cost, 6),
+                    "stt_minutes": round(openai_usage.get("stt_minutes", 0.0), 3),
+                    "tts_minutes": round(openai_usage.get("tts_minutes", 0.0), 3),
+                    "tokens_in": openai_usage.get("tokens_in", 0),
+                    "tokens_out": openai_usage.get("tokens_out", 0),
+                },
+                "elevenlabs": {
+                    "tts_cost": round(elevenlabs_tts_cost, 6),
+                    "stt_cost": round(elevenlabs_stt_cost, 6),
+                    "tts_characters": elevenlabs_usage.get("tts_characters", 0),
+                    "stt_minutes": round(elevenlabs_usage.get("stt_minutes", 0.0), 3),
+                }
+            }
         }
-        
-        costs["total_cost"] = costs["stt_cost"] + costs["tts_cost"] + costs["token_cost"]
-        
-        return costs
     
     def reset_session_costs(self):
         """Reset session cost tracking"""
         self.session_costs = {
             "stt_minutes": 0.0,
             "tts_minutes": 0.0,
+            "tts_characters": 0,
+            "stt_elevenlabs_minutes": 0.0,
             "tokens_in": 0,
             "tokens_out": 0,
-            "requests": 0
+            "requests": 0,
+            "provider_usage": {
+                "openai": {"stt_minutes": 0.0, "tts_minutes": 0.0, "tokens_in": 0, "tokens_out": 0},
+                "elevenlabs": {"tts_characters": 0, "stt_minutes": 0.0}
+            }
         }
         logger.debug("Session costs reset")
+
+    def track_provider_usage(self, provider: str, usage_type: str, amount: float):
+        """Track usage for a specific provider"""
+        provider_usage = self.session_costs.setdefault("provider_usage", {})
+        provider_data = provider_usage.setdefault(provider, {})
+        provider_data[usage_type] = provider_data.get(usage_type, 0) + amount
 
     async def generate_context_summary(self, conversation_text: str, max_tokens: int = 1000) -> str:
         """Generate a summary of conversation context using standard API"""
         try:
             response = await self.client.chat.completions.create(
-                model="gpt-5-mini",  # Using GPT-5-mini for cost-efficient context summarization
+                model=settings.openai_reasoning_model,
                 messages=[
                     {
                         "role": "system",
@@ -295,7 +367,7 @@ class OpenAIClient:
         """Extract key topics from text for document retrieval"""
         try:
             response = await self.client.chat.completions.create(
-                model="gpt-5-mini",
+                model=settings.openai_reasoning_model,
                 messages=[
                     {
                         "role": "system",
@@ -344,12 +416,12 @@ class OpenAIClient:
         """Enhance conversation context with relevant document excerpts"""
         if not relevant_docs:
             return current_context
-        
+
         try:
             doc_context = "\n\n".join(relevant_docs)
-            
+
             response = await self.client.chat.completions.create(
-                model="gpt-5-mini",
+                model=settings.openai_reasoning_model,
                 messages=[
                     {
                         "role": "system",
@@ -360,7 +432,7 @@ class OpenAIClient:
                         "content": f"Current conversation context:\n{current_context}\n\nRelevant document excerpts:\n{doc_context}\n\nPlease create an enhanced context summary."
                     }
                 ],
-                max_completion_tokens=2000,
+                max_completion_tokens=4000,
                 temperature=0.3
             )
             
@@ -384,16 +456,16 @@ class OpenAIClient:
             "timestamp": asyncio.get_event_loop().time()
         })
         
-        # Keep only last 50 turns to manage memory
-        if len(self.conversation_history) > 50:
-            self.conversation_history = self.conversation_history[-50:]
+        # Keep only last 100 turns to manage memory
+        if len(self.conversation_history) > 100:
+            self.conversation_history = self.conversation_history[-100:]
         
         logger.debug("Added conversation turn", 
                     speaker=speaker,
                     text_length=len(text),
                     total_turns=len(self.conversation_history))
     
-    def get_recent_conversation_text(self, minutes: int = 15) -> str:
+    def get_recent_conversation_text(self, minutes: int = 30) -> str:
         """Get recent conversation as text"""
         current_time = asyncio.get_event_loop().time()
         cutoff_time = current_time - (minutes * 60)
@@ -414,10 +486,10 @@ class OpenAIClient:
         """Get text completion from ChatGPT with cost tracking"""
         try:
             response = await self.client.chat.completions.create(
-                model="gpt-5-mini",
+                model=settings.openai_reasoning_model,
                 messages=[
                     {
-                        "role": "system", 
+                        "role": "system",
                         "content": "You are ChatGPT, a helpful AI assistant. Provide clear, concise, and accurate responses to user questions."
                     },
                     {
@@ -425,7 +497,7 @@ class OpenAIClient:
                         "content": prompt
                     }
                 ],
-                max_completion_tokens=1000,
+                max_completion_tokens=2000,
                 temperature=0.7
             )
             
@@ -436,6 +508,8 @@ class OpenAIClient:
                 self.session_costs["tokens_in"] += response.usage.prompt_tokens
                 self.session_costs["tokens_out"] += response.usage.completion_tokens
                 self.session_costs["requests"] += 1
+                self.track_provider_usage("openai", "tokens_in", response.usage.prompt_tokens)
+                self.track_provider_usage("openai", "tokens_out", response.usage.completion_tokens)
             
             logger.debug("Generated text completion", 
                         prompt_length=len(prompt),

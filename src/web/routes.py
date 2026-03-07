@@ -64,6 +64,11 @@ class SessionResponse(BaseModel):
     message: str
 
 
+class ObserverConfigureRequest(BaseModel):
+    analysis_frequency: Optional[int] = None
+    enabled: Optional[bool] = None
+
+
 def create_api_router(ai_app: "AICoHostApp") -> APIRouter:
     """Create API router with all endpoints"""
     
@@ -735,16 +740,25 @@ def create_api_router(ai_app: "AICoHostApp") -> APIRouter:
     
     @router.get("/session/status")
     async def get_session_status():
-        """Get current session tracking status"""
+        """Get current session tracking status with provider info"""
         try:
             # Check if session is running (stored in app state)
             session_start = getattr(ai_app, 'session_start_time', None)
             is_running = session_start is not None
-            
+
+            # Include live cost tracking from openai_client if available
+            live_costs = None
+            if ai_app.openai_client:
+                live_costs = ai_app.openai_client.get_session_costs()
+
             return {
                 "running": is_running,
                 "start_time": session_start,
-                "duration": int(time.time() - session_start) if is_running else 0
+                "duration": int(time.time() - session_start) if is_running else 0,
+                "tts_provider": settings.tts_provider,
+                "stt_provider": settings.stt_provider,
+                "reasoning_model": settings.openai_reasoning_model,
+                "live_costs": live_costs,
             }
             
         except Exception as e:
@@ -785,22 +799,27 @@ def create_api_router(ai_app: "AICoHostApp") -> APIRouter:
             if not openai_key:
                 raise HTTPException(status_code=500, detail="OpenAI API key not configured")
             
-            # Enhanced pricing map with STT and TTS rates (USD)
+            # Enhanced pricing map with STT, TTS, and Realtime rates (USD per 1K tokens unless noted)
             pricing_map = {
-                # Token-based models (per 1K tokens)
-                "gpt-5": {"input": 3.00, "output": 6.00},
-                "gpt-5-mini": {"input": 0.30, "output": 0.60},
-                "gpt-5-nano": {"input": 0.10, "output": 0.20},
+                # Reasoning / text models (per 1K tokens)
+                "gpt-5.4": {"input": 1.25, "output": 5.00},
+                "gpt-5.3-instant": {"input": 0.50, "output": 2.00},
+
+                # Realtime voice models (per 1K tokens)
+                "gpt-realtime": {
+                    "input": 4.00, "output": 16.00,
+                    "audio_input": 32.00, "audio_output": 64.00,
+                },
+                "gpt-realtime-mini": {"input": 0.60, "output": 2.40},
+
+                # Legacy models kept for usage API lookups
                 "gpt-4o-2024-08-06": {"input": 2.50, "output": 5.00},
-                "gpt-4o-2024-05-13": {"input": 5.00, "output": 15.00},
                 "gpt-4o-mini-2024-07-18": {"input": 0.50, "output": 1.50},
-                "gpt-4-turbo": {"input": 10.00, "output": 30.00},
-                "gpt-3.5-turbo": {"input": 0.50, "output": 1.50},
-                
+
                 # STT models (per minute)
                 "gpt-4o-mini-transcribe": {"rate_per_minute": 0.006},
                 "whisper-1": {"rate_per_minute": 0.006},
-                
+
                 # TTS models (per minute)
                 "gpt-4o-mini-tts": {"rate_per_minute": 0.024},
                 "tts-1": {"rate_per_minute": 0.015},
@@ -901,30 +920,40 @@ def create_api_router(ai_app: "AICoHostApp") -> APIRouter:
         duration_minutes = duration / 60
         
         # Generate realistic mock data based on session duration with split-stack costs
+        tts_provider = settings.tts_provider
+        stt_provider = settings.stt_provider
+
         mock_breakdown = [
-            # Token-based costs (gpt-5-mini for text processing)
+            # Token-based costs (gpt-5.4 for reasoning)
             {
                 "service": "Text Processing",
-                "model": "gpt-5-mini",
+                "provider": "openai",
+                "model": settings.openai_reasoning_model,
                 "input_tokens": max(100, duration * 2),
                 "output_tokens": max(50, duration * 1),
                 "cached_tokens": 0,
                 "requests": max(1, duration // 30),
-                "cost_usd": round((max(100, duration * 2) / 1000 * 0.30) + (max(50, duration * 1) / 1000 * 0.60), 6)
+                "cost_usd": round((max(100, duration * 2) / 1000 * 1.25) + (max(50, duration * 1) / 1000 * 5.00), 6)
             },
-            # STT costs (transcription in passive and speech-to-speech modes)
+            # STT costs
             {
                 "service": "Speech-to-Text",
-                "model": "gpt-4o-mini-transcribe",
-                "minutes": round(duration_minutes * 0.8, 2),  # 80% of session time transcribing
-                "cost_usd": round(duration_minutes * 0.8 * 0.006, 6)
+                "provider": stt_provider,
+                "model": "whisper-1" if stt_provider == "openai" else "scribe_v1",
+                "minutes": round(duration_minutes * 0.8, 2),
+                "cost_usd": round(duration_minutes * 0.8 * (0.006 if stt_provider == "openai" else 0.005), 6)
             },
-            # TTS costs (only when in speech-to-speech mode, estimate 10% of session)
+            # TTS costs
             {
                 "service": "Text-to-Speech",
-                "model": "gpt-4o-mini-tts",
-                "minutes": round(duration_minutes * 0.1, 2),  # 10% of session generating speech
-                "cost_usd": round(duration_minutes * 0.1 * 0.024, 6)
+                "provider": tts_provider,
+                "model": "tts-1" if tts_provider == "openai" else settings.elevenlabs_model,
+                "minutes": round(duration_minutes * 0.1, 2),
+                "characters": max(100, duration * 5) if tts_provider == "elevenlabs" else 0,
+                "cost_usd": round(
+                    duration_minutes * 0.1 * 0.015 if tts_provider == "openai"
+                    else max(100, duration * 5) * 0.30 / 1000, 6
+                )
             }
         ]
         
@@ -946,4 +975,145 @@ def create_api_router(ai_app: "AICoHostApp") -> APIRouter:
             "message": f"Session completed (mock data). Duration: {duration}s with split-stack cost tracking"
         }
     
+    # ------------------------------------------------------------------
+    # Provider & Voice endpoints
+    # ------------------------------------------------------------------
+
+    @router.get("/providers")
+    async def get_providers():
+        """Get current TTS/STT provider configuration and available options"""
+        return {
+            "tts_provider": settings.tts_provider,
+            "stt_provider": settings.stt_provider,
+            "reasoning_model": settings.openai_reasoning_model,
+            "available_tts_providers": ["openai", "elevenlabs"] if settings.elevenlabs_available else ["openai"],
+            "available_stt_providers": ["openai", "elevenlabs"] if settings.elevenlabs_available else ["openai"],
+            "available_reasoning_models": ["gpt-5.4", "gpt-5.3-instant"],
+            "elevenlabs_available": settings.elevenlabs_available,
+        }
+
+    @router.post("/providers/tts")
+    async def set_tts_provider(request: dict):
+        """Switch TTS provider"""
+        provider = request.get("provider", "").lower()
+        if provider not in ("openai", "elevenlabs"):
+            raise HTTPException(status_code=400, detail="Invalid TTS provider. Use 'openai' or 'elevenlabs'.")
+        if provider == "elevenlabs" and not settings.elevenlabs_available:
+            raise HTTPException(status_code=400, detail="ElevenLabs API key not configured.")
+        settings.tts_provider = provider
+        return {"success": True, "tts_provider": provider, "message": f"TTS provider set to {provider}"}
+
+    @router.post("/providers/stt")
+    async def set_stt_provider(request: dict):
+        """Switch STT provider"""
+        provider = request.get("provider", "").lower()
+        if provider not in ("openai", "elevenlabs"):
+            raise HTTPException(status_code=400, detail="Invalid STT provider. Use 'openai' or 'elevenlabs'.")
+        if provider == "elevenlabs" and not settings.elevenlabs_available:
+            raise HTTPException(status_code=400, detail="ElevenLabs API key not configured.")
+        settings.stt_provider = provider
+        return {"success": True, "stt_provider": provider, "message": f"STT provider set to {provider}"}
+
+    @router.post("/providers/reasoning-model")
+    async def set_reasoning_model(request: dict):
+        """Switch reasoning model"""
+        model = request.get("model", "")
+        valid_models = ["gpt-5.4", "gpt-5.3-instant"]
+        if model not in valid_models:
+            raise HTTPException(status_code=400, detail=f"Invalid model. Use one of: {valid_models}")
+        settings.openai_reasoning_model = model
+        return {"success": True, "reasoning_model": model, "message": f"Reasoning model set to {model}"}
+
+    @router.get("/voices")
+    async def list_voices():
+        """List available voices for the current TTS provider"""
+        if settings.tts_provider == "openai":
+            return {
+                "provider": "openai",
+                "voices": [
+                    {"id": "alloy", "name": "Alloy"},
+                    {"id": "ash", "name": "Ash"},
+                    {"id": "ballad", "name": "Ballad"},
+                    {"id": "coral", "name": "Coral"},
+                    {"id": "echo", "name": "Echo"},
+                    {"id": "fable", "name": "Fable"},
+                    {"id": "onyx", "name": "Onyx"},
+                    {"id": "nova", "name": "Nova"},
+                    {"id": "sage", "name": "Sage"},
+                    {"id": "shimmer", "name": "Shimmer"},
+                    {"id": "verse", "name": "Verse"},
+                ]
+            }
+        elif settings.tts_provider == "elevenlabs":
+            # Return configured voice plus a note to manage voices in ElevenLabs dashboard
+            voices = []
+            if settings.elevenlabs_voice_id:
+                voices.append({"id": settings.elevenlabs_voice_id, "name": "Configured Voice"})
+            try:
+                if settings.elevenlabs_available:
+                    from elevenlabs import AsyncElevenLabs
+                    client = AsyncElevenLabs(api_key=settings.elevenlabs_api_key)
+                    response = await client.voices.get_all()
+                    voices = [{"id": v.voice_id, "name": v.name} for v in response.voices]
+            except Exception as e:
+                logger.warning("Failed to fetch ElevenLabs voices", error=str(e))
+            return {"provider": "elevenlabs", "voices": voices}
+        else:
+            return {"provider": settings.tts_provider, "voices": []}
+
+    @router.post("/voices/select")
+    async def select_voice(request: dict):
+        """Select a voice for the current TTS provider"""
+        voice_id = request.get("voice_id", "")
+        if not voice_id:
+            raise HTTPException(status_code=400, detail="voice_id is required")
+        if settings.tts_provider == "elevenlabs":
+            settings.elevenlabs_voice_id = voice_id
+        return {"success": True, "voice_id": voice_id, "provider": settings.tts_provider}
+
+    # ------------------------------------------------------------------
+    # Observer Agent endpoints
+    # ------------------------------------------------------------------
+
+    @router.get("/observer/insights")
+    async def get_observer_insights():
+        """Get latest AI observer insights"""
+        try:
+            if not ai_app.observer_agent:
+                return {"insights": [], "enabled": False}
+
+            return {
+                "insights": ai_app.observer_agent.get_latest_insights(),
+                "enabled": ai_app.observer_agent.enabled,
+                "analysis_frequency": ai_app.observer_agent.analysis_frequency,
+            }
+
+        except Exception as e:
+            logger.error("Error getting observer insights", error=str(e))
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @router.post("/observer/configure")
+    async def configure_observer(request: ObserverConfigureRequest):
+        """Configure the observer agent"""
+        try:
+            if not ai_app.observer_agent:
+                raise HTTPException(status_code=400, detail="Observer agent not available")
+
+            config = ai_app.observer_agent.configure(
+                analysis_frequency=request.analysis_frequency,
+                enabled=request.enabled,
+            )
+
+            return {
+                "success": True,
+                "config": config,
+                "message": "Observer configuration updated",
+            }
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error("Error configuring observer", error=str(e))
+            raise HTTPException(status_code=500, detail=str(e))
+
     return router

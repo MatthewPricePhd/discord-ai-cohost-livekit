@@ -21,11 +21,10 @@ class Dashboard {
         this.loadStatus();
         this.startStatusPolling();
         this.loadSessionStatus();
-        
+        this.loadProviders();
+
         // Initialize split-stack mode display
         this.updateModeDisplay('passive');
-        
-        console.log('Dashboard initialized');
     }
     
     setupEventListeners() {
@@ -48,23 +47,23 @@ class Dashboard {
             btn.addEventListener('click', () => this.setMode(btn.dataset.mode));
         });
         
-        // Model selection dropdowns
-        const textModelSelect = document.getElementById('text-model-select');
-        const sttModelSelect = document.getElementById('stt-model-select');
-        const ttsModelSelect = document.getElementById('tts-model-select');
+        // Provider and model selection dropdowns
+        const reasoningModelSelect = document.getElementById('reasoning-model-select');
+        const ttsProviderSelect = document.getElementById('tts-provider-select');
+        const sttProviderSelect = document.getElementById('stt-provider-select');
         const ttsVoiceSelect = document.getElementById('tts-voice-select');
-        
-        if (textModelSelect) {
-            textModelSelect.addEventListener('change', () => this.updateModelConfiguration());
+
+        if (reasoningModelSelect) {
+            reasoningModelSelect.addEventListener('change', () => this.setReasoningModel(reasoningModelSelect.value));
         }
-        if (sttModelSelect) {
-            sttModelSelect.addEventListener('change', () => this.updateModelConfiguration());
+        if (ttsProviderSelect) {
+            ttsProviderSelect.addEventListener('change', () => this.setTTSProvider(ttsProviderSelect.value));
         }
-        if (ttsModelSelect) {
-            ttsModelSelect.addEventListener('change', () => this.updateModelConfiguration());
+        if (sttProviderSelect) {
+            sttProviderSelect.addEventListener('change', () => this.setSTTProvider(sttProviderSelect.value));
         }
         if (ttsVoiceSelect) {
-            ttsVoiceSelect.addEventListener('change', () => this.updateModelConfiguration());
+            ttsVoiceSelect.addEventListener('change', () => this.selectVoice(ttsVoiceSelect.value));
         }
         
         // Force response
@@ -461,28 +460,130 @@ class Dashboard {
         return names[mode] || mode;
     }
     
-    async updateModelConfiguration() {
-        const textModel = document.getElementById('text-model-select')?.value;
-        const sttModel = document.getElementById('stt-model-select')?.value;
-        const ttsModel = document.getElementById('tts-model-select')?.value;
-        const ttsVoice = document.getElementById('tts-voice-select')?.value;
-        
-        const config = {
-            text_model: textModel,
-            stt_model: sttModel,
-            tts_model: ttsModel,
-            tts_voice: ttsVoice
-        };
-        
+    async loadProviders() {
         try {
-            // For now, just show a success message
-            // In a full implementation, this would send to a backend endpoint
-            this.showModelSelectionMessage('Model configuration updated', 'success');
-            console.log('Model configuration:', config);
-            
+            const response = await fetch('/api/providers');
+            if (!response.ok) return;
+            const data = await response.json();
+
+            // Set current values in dropdowns
+            const reasoningSelect = document.getElementById('reasoning-model-select');
+            const ttsProviderSelect = document.getElementById('tts-provider-select');
+            const sttProviderSelect = document.getElementById('stt-provider-select');
+
+            if (reasoningSelect) reasoningSelect.value = data.reasoning_model || 'gpt-5.4';
+            if (ttsProviderSelect) {
+                // Disable elevenlabs option if not available
+                const elOption = ttsProviderSelect.querySelector('option[value="elevenlabs"]');
+                if (elOption && !data.elevenlabs_available) elOption.disabled = true;
+                ttsProviderSelect.value = data.tts_provider || 'openai';
+            }
+            if (sttProviderSelect) {
+                const elOption = sttProviderSelect.querySelector('option[value="elevenlabs"]');
+                if (elOption && !data.elevenlabs_available) elOption.disabled = true;
+                sttProviderSelect.value = data.stt_provider || 'openai';
+            }
+
+            // Load voices for current provider
+            await this.loadVoices();
         } catch (error) {
-            console.error('Error updating model configuration:', error);
-            this.showModelSelectionMessage('Failed to update model configuration', 'error');
+            // Silently fail on initial load
+        }
+    }
+
+    async loadVoices() {
+        try {
+            const response = await fetch('/api/voices');
+            if (!response.ok) return;
+            const data = await response.json();
+            const voiceSelect = document.getElementById('tts-voice-select');
+            if (!voiceSelect) return;
+
+            voiceSelect.innerHTML = '';
+            (data.voices || []).forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = v.id;
+                opt.textContent = v.name;
+                voiceSelect.appendChild(opt);
+            });
+        } catch (error) {
+            // Silently fail
+        }
+    }
+
+    async setReasoningModel(model) {
+        try {
+            const response = await fetch('/api/providers/reasoning-model', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model })
+            });
+            const result = await response.json();
+            if (response.ok) {
+                this.showModelSelectionMessage(`Reasoning model: ${model}`, 'success');
+            } else {
+                this.showModelSelectionMessage(result.detail || 'Failed to update', 'error');
+            }
+        } catch (error) {
+            this.showModelSelectionMessage('Failed to update reasoning model', 'error');
+        }
+    }
+
+    async setTTSProvider(provider) {
+        try {
+            const response = await fetch('/api/providers/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ provider })
+            });
+            const result = await response.json();
+            if (response.ok) {
+                this.showModelSelectionMessage(`TTS: ${provider}`, 'success');
+                await this.loadVoices();
+            } else {
+                this.showModelSelectionMessage(result.detail || 'Failed to update', 'error');
+                // Revert dropdown
+                await this.loadProviders();
+            }
+        } catch (error) {
+            this.showModelSelectionMessage('Failed to update TTS provider', 'error');
+        }
+    }
+
+    async setSTTProvider(provider) {
+        try {
+            const response = await fetch('/api/providers/stt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ provider })
+            });
+            const result = await response.json();
+            if (response.ok) {
+                this.showModelSelectionMessage(`STT: ${provider}`, 'success');
+            } else {
+                this.showModelSelectionMessage(result.detail || 'Failed to update', 'error');
+                await this.loadProviders();
+            }
+        } catch (error) {
+            this.showModelSelectionMessage('Failed to update STT provider', 'error');
+        }
+    }
+
+    async selectVoice(voiceId) {
+        try {
+            const response = await fetch('/api/voices/select', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ voice_id: voiceId })
+            });
+            const result = await response.json();
+            if (response.ok) {
+                this.showModelSelectionMessage('Voice updated', 'success');
+            } else {
+                this.showModelSelectionMessage(result.detail || 'Failed to update voice', 'error');
+            }
+        } catch (error) {
+            this.showModelSelectionMessage('Failed to update voice', 'error');
         }
     }
     
@@ -1928,61 +2029,65 @@ class Dashboard {
     }
     
     updateSessionCostBreakdown(result) {
-        // Update individual cost components
         const sttCostEl = document.getElementById('session-stt-cost');
         const ttsCostEl = document.getElementById('session-tts-cost');
         const tokenCostEl = document.getElementById('session-token-cost');
-        
-        // Update usage metrics
         const sttMinutesEl = document.getElementById('session-stt-minutes');
         const ttsMinutesEl = document.getElementById('session-tts-minutes');
         const totalTokensEl = document.getElementById('session-total-tokens');
         const requestsEl = document.getElementById('session-requests');
-        
+        const sttProviderEl = document.getElementById('session-stt-provider');
+        const ttsProviderEl = document.getElementById('session-tts-provider');
+        const reasoningModelEl = document.getElementById('session-reasoning-model');
+
         if (result.breakdown && Array.isArray(result.breakdown)) {
-            // Process breakdown for split-stack architecture
             let sttCost = 0, ttsCost = 0, tokenCost = 0;
-            let sttMinutes = 0, ttsMinutes = 0, totalTokens = 0, totalRequests = 0;
-            
+            let sttMinutes = 0, ttsDetail = '', totalTokens = 0, totalRequests = 0;
+            let sttProvider = 'OpenAI', ttsProvider = 'OpenAI', reasoningModel = 'GPT-5.4';
+
             result.breakdown.forEach(item => {
                 if (item.service === 'Speech-to-Text') {
                     sttCost += item.cost_usd || 0;
                     sttMinutes += item.minutes || 0;
+                    if (item.provider) sttProvider = item.provider;
                 } else if (item.service === 'Text-to-Speech') {
                     ttsCost += item.cost_usd || 0;
-                    ttsMinutes += item.minutes || 0;
+                    if (item.provider) ttsProvider = item.provider;
+                    if (item.characters) {
+                        ttsDetail = `${(item.characters || 0).toLocaleString()} chars`;
+                    } else {
+                        ttsDetail = `${(item.minutes || 0).toFixed(1)} min`;
+                    }
                 } else if (item.service === 'Text Processing') {
                     tokenCost += item.cost_usd || 0;
                     totalTokens += (item.input_tokens || 0) + (item.output_tokens || 0);
                     totalRequests += item.requests || 0;
+                    if (item.model) reasoningModel = item.model;
                 }
             });
-            
-            // Update cost displays
+
             if (sttCostEl) sttCostEl.textContent = `$${sttCost.toFixed(3)}`;
             if (ttsCostEl) ttsCostEl.textContent = `$${ttsCost.toFixed(3)}`;
             if (tokenCostEl) tokenCostEl.textContent = `$${tokenCost.toFixed(3)}`;
-            
-            // Update usage displays
-            if (sttMinutesEl) sttMinutesEl.textContent = sttMinutes.toFixed(1);
-            if (ttsMinutesEl) ttsMinutesEl.textContent = ttsMinutes.toFixed(1);
+            if (sttMinutesEl) sttMinutesEl.textContent = `${sttMinutes.toFixed(1)} min`;
+            if (ttsMinutesEl) ttsMinutesEl.textContent = ttsDetail || '0.0 min';
             if (totalTokensEl) totalTokensEl.textContent = totalTokens.toLocaleString();
             if (requestsEl) requestsEl.textContent = totalRequests.toString();
-            
+            if (sttProviderEl) sttProviderEl.textContent = sttProvider;
+            if (ttsProviderEl) ttsProviderEl.textContent = ttsProvider;
+            if (reasoningModelEl) reasoningModelEl.textContent = reasoningModel;
+
         } else if (result.cost_summary) {
-            // Handle alternative cost summary format
             const summary = result.cost_summary;
-            
-            if (sttMinutesEl) sttMinutesEl.textContent = (summary.stt_minutes || 0).toFixed(1);
-            if (ttsMinutesEl) ttsMinutesEl.textContent = (summary.tts_minutes || 0).toFixed(1);
+            if (sttMinutesEl) sttMinutesEl.textContent = `${(summary.stt_minutes || 0).toFixed(1)} min`;
+            if (ttsMinutesEl) ttsMinutesEl.textContent = `${(summary.tts_minutes || 0).toFixed(1)} min`;
             if (totalTokensEl) totalTokensEl.textContent = (summary.total_tokens || 0).toLocaleString();
             if (requestsEl) requestsEl.textContent = (summary.total_requests || 0).toString();
-            
-            // Estimate costs for display (using fallback calculation)
+
             const estimatedSTTCost = (summary.stt_minutes || 0) * 0.006;
             const estimatedTTSCost = (summary.tts_minutes || 0) * 0.015;
             const estimatedTokenCost = result.total_usd - estimatedSTTCost - estimatedTTSCost;
-            
+
             if (sttCostEl) sttCostEl.textContent = `$${estimatedSTTCost.toFixed(3)}`;
             if (ttsCostEl) ttsCostEl.textContent = `$${estimatedTTSCost.toFixed(3)}`;
             if (tokenCostEl) tokenCostEl.textContent = `$${Math.max(0, estimatedTokenCost).toFixed(3)}`;

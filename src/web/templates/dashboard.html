@@ -2,7 +2,7 @@
 
 {% block content %}
 <!-- Main Dashboard Content -->
-<div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
+<div class="grid grid-cols-1 xl:grid-cols-7 gap-6">
     <!-- Control Panel -->
     <div class="xl:col-span-1">
         <div class="bg-gray-800 rounded-lg shadow-lg p-6">
@@ -148,11 +148,11 @@
             </h2>
             
             <div class="space-y-4">
-                <!-- Model Choices -->
+                <!-- Providers & Models -->
                 <div>
                     <div class="flex items-center justify-between mb-2 min-h-[20px]">
                         <label class="text-sm font-medium text-gray-300">
-                            Model Choices
+                            Providers & Models
                         </label>
                         <!-- Model Selection Message Area -->
                         <div id="model-selection-message-area" class="flex items-center">
@@ -162,46 +162,40 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="space-y-3">
-                        <!-- Text Processing Model -->
+                        <!-- Reasoning Model -->
                         <div>
-                            <label class="text-xs text-gray-400 mb-1 block">Text Processing</label>
-                            <select id="text-model-select" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white text-sm">
-                                <option value="gpt-5-mini" selected>GPT-5 Mini (Cost Efficient)</option>
-                                <option value="gpt-5">GPT-5 (Higher Accuracy)</option>
-                                <option value="gpt-4o-2024-08-06">GPT-4o (Legacy)</option>
+                            <label class="text-xs text-gray-400 mb-1 block">Reasoning Model</label>
+                            <select id="reasoning-model-select" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white text-sm">
+                                <option value="gpt-5.4" selected>GPT-5.4 ($1.25/$5.00 per 1M)</option>
+                                <option value="gpt-5.3-instant">GPT-5.3 Instant ($0.50/$2.00 per 1M)</option>
                             </select>
                         </div>
-                        
-                        <!-- STT Model -->
+
+                        <!-- TTS Provider -->
                         <div>
-                            <label class="text-xs text-gray-400 mb-1 block">Speech-to-Text</label>
-                            <select id="stt-model-select" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white text-sm">
-                                <option value="whisper-1" selected>Whisper-1 (Standard)</option>
-                                <option value="gpt-4o-mini-transcribe">GPT-4o Mini Transcribe</option>
+                            <label class="text-xs text-gray-400 mb-1 block">TTS Provider</label>
+                            <select id="tts-provider-select" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white text-sm">
+                                <option value="openai" selected>OpenAI TTS</option>
+                                <option value="elevenlabs">ElevenLabs</option>
                             </select>
                         </div>
-                        
-                        <!-- TTS Model -->
+
+                        <!-- STT Provider -->
                         <div>
-                            <label class="text-xs text-gray-400 mb-1 block">Text-to-Speech</label>
-                            <select id="tts-model-select" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white text-sm">
-                                <option value="tts-1" selected>TTS-1 (Cost Efficient)</option>
-                                <option value="tts-1-hd">TTS-1 HD (Higher Quality)</option>
+                            <label class="text-xs text-gray-400 mb-1 block">STT Provider</label>
+                            <select id="stt-provider-select" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white text-sm">
+                                <option value="openai" selected>OpenAI Whisper</option>
+                                <option value="elevenlabs">ElevenLabs Scribe</option>
                             </select>
                         </div>
-                        
+
                         <!-- Voice Selection for TTS -->
                         <div>
                             <label class="text-xs text-gray-400 mb-1 block">TTS Voice</label>
                             <select id="tts-voice-select" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white text-sm">
                                 <option value="alloy" selected>Alloy</option>
-                                <option value="echo">Echo</option>
-                                <option value="fable">Fable</option>
-                                <option value="onyx">Onyx</option>
-                                <option value="nova">Nova</option>
-                                <option value="shimmer">Shimmer</option>
                             </select>
                         </div>
                     </div>
@@ -242,26 +236,26 @@
                             <div class="text-sm font-medium text-white mb-3">Session Results (Split-Stack):</div>
                             <div id="session-cost" class="text-lg font-bold text-green-400 mb-3">$0.0000</div>
                             
-                            <!-- Enhanced Cost Breakdown -->
+                            <!-- Enhanced Cost Breakdown with Provider Detail -->
                             <div class="space-y-2">
                                 <div class="flex justify-between text-xs">
                                     <span class="text-gray-300 flex items-center">
                                         <i class="fas fa-microphone mr-1 text-blue-400"></i>
-                                        STT (Speech-to-Text):
+                                        STT (<span id="session-stt-provider" class="ml-0.5">OpenAI</span>):
                                     </span>
                                     <span id="session-stt-cost" class="text-green-400">$0.000</span>
                                 </div>
                                 <div class="flex justify-between text-xs">
                                     <span class="text-gray-300 flex items-center">
                                         <i class="fas fa-volume-up mr-1 text-purple-400"></i>
-                                        TTS (Text-to-Speech):
+                                        TTS (<span id="session-tts-provider" class="ml-0.5">OpenAI</span>):
                                     </span>
                                     <span id="session-tts-cost" class="text-green-400">$0.000</span>
                                 </div>
                                 <div class="flex justify-between text-xs">
                                     <span class="text-gray-300 flex items-center">
                                         <i class="fas fa-brain mr-1 text-pink-400"></i>
-                                        Text Processing:
+                                        Reasoning (<span id="session-reasoning-model" class="ml-0.5">GPT-5.4</span>):
                                     </span>
                                     <span id="session-token-cost" class="text-green-400">$0.000</span>
                                 </div>
@@ -272,7 +266,7 @@
                                         <span id="session-stt-minutes">0.0</span>
                                     </div>
                                     <div class="flex justify-between">
-                                        <span>TTS Minutes:</span>
+                                        <span>TTS Minutes/Chars:</span>
                                         <span id="session-tts-minutes">0.0</span>
                                     </div>
                                     <div class="flex justify-between">
@@ -408,6 +402,40 @@
         </div>
     </div>
     
+    <!-- AI Insights (Observer Agent) -->
+    <div class="xl:col-span-2">
+        <div class="bg-gray-800 rounded-lg shadow-lg p-6 h-full flex flex-col">
+            <div class="flex items-center justify-between mb-3 min-h-[32px] flex-shrink-0">
+                <div class="flex items-center">
+                    <h3 class="text-lg font-semibold flex items-center">
+                        <i class="fas fa-eye mr-2 text-cyan-400"></i>
+                        AI Insights
+                    </h3>
+                    <span id="observer-status" class="ml-3 px-2 py-0.5 rounded text-xs bg-green-900 text-green-300">Active</span>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <label class="text-xs text-gray-400 flex items-center space-x-1">
+                        <span>Every</span>
+                        <input id="observer-frequency" type="number" min="1" max="20" value="3"
+                               class="w-12 bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-white text-xs text-center">
+                        <span>turns</span>
+                    </label>
+                    <button id="observer-toggle" class="bg-cyan-600 hover:bg-cyan-700 px-3 py-1 text-sm rounded transition-colors">
+                        <i class="fas fa-power-off mr-1"></i>
+                        Enabled
+                    </button>
+                </div>
+            </div>
+
+            <div id="observer-insights" class="bg-gray-900 rounded-lg p-4 overflow-y-auto border border-gray-700 flex-1 min-h-0 space-y-4" style="max-height: calc(100vh - 16rem);">
+                <div class="text-gray-500 text-center py-8">
+                    <i class="fas fa-satellite-dish text-2xl mb-2"></i>
+                    <p>AI insights will appear here as the conversation progresses.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Right Content Area - Live Conversation -->
     <div class="xl:col-span-2">
         <!-- Live Transcript -->
@@ -463,4 +491,122 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', path='/js/dashboard.js') }}"></script>
+<script>
+(function() {
+    const insightsContainer = document.getElementById('observer-insights');
+    const toggleBtn = document.getElementById('observer-toggle');
+    const frequencyInput = document.getElementById('observer-frequency');
+    const statusBadge = document.getElementById('observer-status');
+    let observerEnabled = true;
+
+    async function fetchInsights() {
+        try {
+            const res = await fetch('/api/observer/insights');
+            if (!res.ok) return;
+            const data = await res.json();
+
+            observerEnabled = data.enabled;
+            updateToggleUI();
+
+            if (data.insights && data.insights.length > 0) {
+                renderInsights(data.insights);
+            }
+        } catch (e) { /* silently retry next cycle */ }
+    }
+
+    function renderInsights(insights) {
+        let html = '';
+        for (const insight of insights) {
+            const time = new Date(insight.timestamp).toLocaleTimeString();
+            html += '<div class="border border-gray-700 rounded-lg p-3 space-y-2">';
+            html += '<div class="flex items-center justify-between">';
+            html += '<span class="text-xs text-gray-400">' + time + '</span>';
+            html += '<span class="text-xs text-gray-500">' + insight.turns_analyzed + ' turns analyzed</span>';
+            html += '</div>';
+
+            if (insight.conversation_direction) {
+                html += '<div class="text-sm text-cyan-300"><i class="fas fa-compass mr-1"></i>' + escapeHtml(insight.conversation_direction) + '</div>';
+            }
+
+            if (insight.talking_points && insight.talking_points.length > 0) {
+                html += '<div><div class="text-xs font-medium text-yellow-400 mb-1"><i class="fas fa-lightbulb mr-1"></i>Talking Points</div><ul class="text-sm text-gray-300 space-y-1 ml-4 list-disc">';
+                for (const tp of insight.talking_points) {
+                    html += '<li>' + escapeHtml(tp) + '</li>';
+                }
+                html += '</ul></div>';
+            }
+
+            if (insight.fact_checks && insight.fact_checks.length > 0) {
+                html += '<div><div class="text-xs font-medium text-red-400 mb-1"><i class="fas fa-exclamation-triangle mr-1"></i>Fact Checks</div><ul class="text-sm text-gray-300 space-y-1 ml-4 list-disc">';
+                for (const fc of insight.fact_checks) {
+                    html += '<li>' + escapeHtml(fc) + '</li>';
+                }
+                html += '</ul></div>';
+            }
+
+            if (insight.relevant_docs && insight.relevant_docs.length > 0) {
+                html += '<div><div class="text-xs font-medium text-blue-400 mb-1"><i class="fas fa-file-alt mr-1"></i>Relevant Docs</div>';
+                for (const doc of insight.relevant_docs) {
+                    html += '<div class="text-xs text-gray-400 bg-gray-800 rounded p-2 mt-1"><strong>' + escapeHtml(doc.title) + '</strong><br>' + escapeHtml(doc.snippet) + '</div>';
+                }
+                html += '</div>';
+            }
+
+            html += '</div>';
+        }
+        insightsContainer.innerHTML = html;
+    }
+
+    function updateToggleUI() {
+        if (observerEnabled) {
+            toggleBtn.innerHTML = '<i class="fas fa-power-off mr-1"></i>Enabled';
+            toggleBtn.classList.remove('bg-gray-600');
+            toggleBtn.classList.add('bg-cyan-600', 'hover:bg-cyan-700');
+            statusBadge.textContent = 'Active';
+            statusBadge.classList.remove('bg-red-900', 'text-red-300');
+            statusBadge.classList.add('bg-green-900', 'text-green-300');
+        } else {
+            toggleBtn.innerHTML = '<i class="fas fa-power-off mr-1"></i>Disabled';
+            toggleBtn.classList.remove('bg-cyan-600', 'hover:bg-cyan-700');
+            toggleBtn.classList.add('bg-gray-600');
+            statusBadge.textContent = 'Paused';
+            statusBadge.classList.remove('bg-green-900', 'text-green-300');
+            statusBadge.classList.add('bg-red-900', 'text-red-300');
+        }
+    }
+
+    async function configureObserver(opts) {
+        try {
+            await fetch('/api/observer/configure', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(opts)
+            });
+        } catch (e) { /* ignore */ }
+    }
+
+    toggleBtn.addEventListener('click', function() {
+        observerEnabled = !observerEnabled;
+        updateToggleUI();
+        configureObserver({ enabled: observerEnabled });
+    });
+
+    frequencyInput.addEventListener('change', function() {
+        const val = parseInt(this.value, 10);
+        if (val >= 1) {
+            configureObserver({ analysis_frequency: val });
+        }
+    });
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Poll every 10 seconds
+    fetchInsights();
+    setInterval(fetchInsights, 10000);
+})();
+</script>
 {% endblock %}
