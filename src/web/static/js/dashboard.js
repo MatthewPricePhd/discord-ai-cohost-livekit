@@ -374,9 +374,8 @@ class Dashboard {
                     endpoint = '/api/mode/speech-to-speech';
                     break;
                 case 'ask-chatgpt':
-                    // This mode is handled differently - it's temporary
-                    this.showAIModeMessage('Ask ChatGPT mode activated - use the query box below', 'info');
-                    return;
+                    endpoint = '/api/mode/ask-chatgpt';
+                    break;
                 default:
                     throw new Error('Invalid mode');
             }
@@ -1023,20 +1022,7 @@ class Dashboard {
             }
         }
         
-        // Update mode indicator
-        const modeIndicator = document.getElementById('mode-indicator');
-        if (modeIndicator) {
-            const mode = status.mode || 'unknown';
-            modeIndicator.textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
-            
-            if (mode === 'active') {
-                modeIndicator.className = 'px-2 py-1 text-xs font-semibold rounded-full bg-green-600 text-white';
-            } else if (mode === 'passive') {
-                modeIndicator.className = 'px-2 py-1 text-xs font-semibold rounded-full bg-blue-600 text-white';
-            } else {
-                modeIndicator.className = 'px-2 py-1 text-xs font-semibold rounded-full bg-gray-600 text-gray-200';
-            }
-        }
+        // Mode indicator is handled by updateModeStatus()
     }
     
     
@@ -1091,27 +1077,29 @@ class Dashboard {
     
     updateModeStatus(status) {
         const modeIndicator = document.getElementById('mode-indicator');
-        
+
         if (!modeIndicator) return;
-        
-        // Determine mode based on connectivity and settings
+
         const isConnected = status.running && status.discord_status && status.discord_status.bot_user;
-        const canReceiveAudio = status.discord_status && status.discord_status.voice_connection && 
-                               status.discord_status.voice_connection.connected;
-        
+
         if (!isConnected) {
-            // Bot not connected - Inactive (red)
             modeIndicator.textContent = 'Inactive';
             modeIndicator.className = 'px-2 py-1 text-xs font-semibold rounded-full bg-red-600 text-white';
-        } else if (status.mode === 'active' && canReceiveAudio) {
-            // Active mode and can receive audio - Active (green)
-            modeIndicator.textContent = 'Active';
-            modeIndicator.className = 'px-2 py-1 text-xs font-semibold rounded-full bg-green-600 text-white';
-        } else {
-            // Passive mode or connected but no audio - Passive (gray)
-            modeIndicator.textContent = 'Passive';
-            modeIndicator.className = 'px-2 py-1 text-xs font-semibold rounded-full bg-gray-600 text-gray-200';
+            return;
         }
+
+        const mode = status.mode || 'passive';
+        const modeConfig = {
+            'passive': { label: 'Passive', classes: 'bg-blue-600 text-white' },
+            'speech-to-speech': { label: 'Speech', classes: 'bg-green-600 text-white' },
+            'ask-chatgpt': { label: 'ChatGPT', classes: 'bg-purple-600 text-white' }
+        };
+        const config = modeConfig[mode] || modeConfig['passive'];
+        modeIndicator.textContent = config.label;
+        modeIndicator.className = `px-2 py-1 text-xs font-semibold rounded-full ${config.classes}`;
+
+        // Sync panel mode display with status
+        this.updateModeDisplay(mode);
     }
     
     

@@ -52,7 +52,7 @@ class DiscordClient(commands.Bot):
         self.voice_manager = VoiceManager(self)
         self.audio_callback: Optional[Callable[[bytes, int], None]] = None
         self.status_callback: Optional[Callable[[Dict[str, Any]], None]] = None
-        self._ready = False
+        self._bot_ready = False
         
     async def setup_hook(self) -> None:
         """Setup hook called when bot is starting"""
@@ -74,7 +74,7 @@ class DiscordClient(commands.Bot):
             status=discord.Status.online
         )
         
-        self._ready = True
+        self._bot_ready = True
     
     async def on_voice_state_update(self, member, before, after):
         """Handle voice state updates"""
@@ -176,7 +176,7 @@ class DiscordClient(commands.Bot):
         voice_status = self.voice_manager.connection_status
         
         return {
-            "bot_ready": self._ready,
+            "bot_ready": self._bot_ready,
             "bot_user": str(self.user) if self.user else None,
             "guild_count": len(self.guilds),
             "voice_connection": voice_status,

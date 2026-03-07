@@ -168,7 +168,7 @@ def create_api_router(ai_app: "AICoHostApp") -> APIRouter:
     async def get_discord_guilds():
         """Get list of Discord guilds the bot is in"""
         try:
-            if not ai_app.discord_client or not ai_app.discord_client._ready:
+            if not ai_app.discord_client or not ai_app.discord_client._bot_ready:
                 raise HTTPException(status_code=400, detail="Discord bot not ready")
             
             guilds = []
@@ -520,6 +520,22 @@ def create_api_router(ai_app: "AICoHostApp") -> APIRouter:
             logger.error("Error setting speech-to-speech mode", error=str(e))
             raise HTTPException(status_code=500, detail=str(e))
     
+    @router.post("/mode/ask-chatgpt")
+    async def set_ask_chatgpt_mode():
+        """Set AI to Ask ChatGPT mode (text-only)"""
+        try:
+            await ai_app.set_mode("ask-chatgpt")
+
+            return {
+                "success": True,
+                "mode": "ask-chatgpt",
+                "message": "Switched to Ask ChatGPT mode - text-only queries"
+            }
+
+        except Exception as e:
+            logger.error("Error setting ask-chatgpt mode", error=str(e))
+            raise HTTPException(status_code=500, detail=str(e))
+
     @router.post("/ai/ask-chatgpt")
     async def ask_chatgpt_mode(request: dict):
         """Ask ChatGPT mode - text-only Q&A without audio processing"""

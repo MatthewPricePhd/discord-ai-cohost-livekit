@@ -313,7 +313,7 @@ class AICoHostApp:
         """Get application status"""
         return {
             "running": self.running,
-            "mode": "passive" if self.is_passive_mode else "active",
+            "mode": self.current_mode,
             "discord_status": self.discord_client.get_status() if self.discord_client else None,
             "openai_status": self.openai_client.status if self.openai_client else None,
             "web_server_running": self.web_server is not None
