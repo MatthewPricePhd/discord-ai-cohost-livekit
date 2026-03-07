@@ -4,6 +4,9 @@ Discord bot client for AI Co-Host Bot
 import asyncio
 from typing import Optional, Callable, Dict, Any
 
+import sys
+import platform
+
 import discord
 from discord.ext import commands
 
@@ -11,6 +14,24 @@ from .voice_manager import VoiceManager
 from ..config import get_logger, settings
 
 logger = get_logger(__name__)
+
+# Load opus library for voice support
+if not discord.opus.is_loaded():
+    if platform.system() == "Darwin":
+        _opus_paths = ["/opt/homebrew/lib/libopus.dylib", "/usr/local/lib/libopus.dylib"]
+    elif platform.system() == "Linux":
+        _opus_paths = ["libopus.so.0", "libopus.so"]
+    else:
+        _opus_paths = ["opus"]
+    for _path in _opus_paths:
+        try:
+            discord.opus.load_opus(_path)
+            logger.info("Loaded opus library", path=_path)
+            break
+        except OSError:
+            continue
+    if not discord.opus.is_loaded():
+        logger.warning("Could not load opus library — voice will not work")
 
 
 class DiscordClient(commands.Bot):
@@ -84,7 +105,14 @@ class DiscordClient(commands.Bot):
         """Join a voice channel by ID"""
         try:
             channel = self.get_channel(channel_id)
-            if not channel or not isinstance(channel, discord.VoiceChannel):
+            if not channel:
+                # Channel not in cache, try fetching from API
+                try:
+                    channel = await self.fetch_channel(channel_id)
+                except discord.NotFound:
+                    logger.error("Voice channel not found", channel_id=channel_id)
+                    return False
+            if not isinstance(channel, (discord.VoiceChannel, discord.StageChannel)):
                 logger.error("Invalid voice channel", channel_id=channel_id)
                 return False
             

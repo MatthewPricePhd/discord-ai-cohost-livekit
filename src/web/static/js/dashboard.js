@@ -243,7 +243,7 @@ class Dashboard {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ channel_id: parseInt(channelId) })
+                body: JSON.stringify({ channel_id: channelId })
             });
             
             const result = await response.json();
@@ -252,7 +252,8 @@ class Dashboard {
                 this.showDiscordVoiceMessage('Joined voice channel successfully', 'success');
                 this.startTranscriptPolling();
             } else {
-                this.showDiscordVoiceMessage(result.detail || 'Failed to join voice channel', 'error');
+                const detail = typeof result.detail === 'string' ? result.detail : 'Failed to join voice channel';
+                this.showDiscordVoiceMessage(detail, 'error');
             }
             
         } catch (error) {

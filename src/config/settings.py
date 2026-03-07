@@ -103,7 +103,7 @@ class Settings(BaseSettings):
         """Get headers for OpenAI Realtime API"""
         return {
             "Authorization": f"Bearer {self.openai_api_key}",
-            "OpenAI-Beta": "realtime=v2"
+            "OpenAI-Beta": "realtime=v1"
         }
 
     @property

@@ -1,7 +1,7 @@
 """
 API routes for Discord AI Co-Host Bot web interface
 """
-from typing import Dict, Any, List, Optional, TYPE_CHECKING
+from typing import Dict, Any, List, Optional, Union, TYPE_CHECKING
 
 import os
 import time
@@ -31,7 +31,7 @@ class StatusResponse(BaseModel):
 
 
 class ChannelJoinRequest(BaseModel):
-    channel_id: int
+    channel_id: Union[str, int]  # Accept both string and int for compatibility
 
 
 class ModeToggleResponse(BaseModel):
@@ -101,8 +101,9 @@ def create_api_router(ai_app: "AICoHostApp") -> APIRouter:
     async def join_voice_channel(request: ChannelJoinRequest):
         """Join a Discord voice channel"""
         try:
-            success = await ai_app.join_voice_channel(request.channel_id)
-            
+            channel_id = int(request.channel_id)
+            success = await ai_app.join_voice_channel(channel_id)
+
             if success:
                 return {
                     "success": True,
@@ -115,9 +116,11 @@ def create_api_router(ai_app: "AICoHostApp") -> APIRouter:
                     detail=f"Failed to join voice channel {request.channel_id}"
                 )
                 
+        except HTTPException:
+            raise
         except Exception as e:
-            logger.error("Error joining voice channel", 
-                        channel_id=request.channel_id, 
+            logger.error("Error joining voice channel",
+                        channel_id=request.channel_id,
                         error=str(e))
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -171,21 +174,21 @@ def create_api_router(ai_app: "AICoHostApp") -> APIRouter:
             guilds = []
             for guild in ai_app.discord_client.guilds:
                 guild_data = {
-                    "id": guild.id,
+                    "id": str(guild.id),
                     "name": guild.name,
                     "member_count": guild.member_count,
                     "voice_channels": []
                 }
-                
+
                 # Get voice channels
                 for channel in guild.voice_channels:
                     channel_data = {
-                        "id": channel.id,
+                        "id": str(channel.id),
                         "name": channel.name,
                         "user_limit": channel.user_limit,
                         "members": [
                             {
-                                "id": member.id,
+                                "id": str(member.id),
                                 "name": member.display_name,
                                 "bot": member.bot
                             }
@@ -794,10 +797,24 @@ def create_api_router(ai_app: "AICoHostApp") -> APIRouter:
             
             end_time = int(time.time())
             
-            # Get OpenAI API key for usage API calls
-            openai_key = settings.openai_api_key
-            if not openai_key:
-                raise HTTPException(status_code=500, detail="OpenAI API key not configured")
+            # Get OpenAI Admin key for Usage API (requires admin key, not regular API key)
+            admin_key = settings.openai_admin_key
+            if not admin_key:
+                logger.warning("OpenAI Admin key not configured — using tracked costs from this session instead")
+                # Fall back to locally tracked costs
+                ai_app.session_start_time = None
+                computed_costs = ai_app.openai_client.get_session_costs() if ai_app.openai_client else {"total_cost": 0.0}
+                return {
+                    "success": True,
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "duration_seconds": end_time - start_time,
+                    "total_usd": round(computed_costs.get("total_cost", 0.0), 6),
+                    "breakdown": [],
+                    "cost_summary": computed_costs,
+                    "message": f"Session completed (local tracking). Duration: {end_time - start_time}s",
+                    "source": "local"
+                }
             
             # Enhanced pricing map with STT, TTS, and Realtime rates (USD per 1K tokens unless noted)
             pricing_map = {
@@ -838,17 +855,29 @@ def create_api_router(ai_app: "AICoHostApp") -> APIRouter:
                     
                     response = await client.get(
                         "https://api.openai.com/v1/organization/usage/completions",
-                        headers={"Authorization": f"Bearer {openai_key}"},
+                        headers={"Authorization": f"Bearer {admin_key}"},
                         params=params,
                         timeout=30.0
                     )
                     
                     if response.status_code != 200:
-                        logger.warning("OpenAI Usage API request failed", 
+                        logger.warning("OpenAI Usage API request failed",
                                      status_code=response.status_code,
                                      response=response.text)
-                        # Return mock data for development
-                        return await _get_mock_session_data(start_time, end_time)
+                        # Fall back to locally tracked costs
+                        ai_app.session_start_time = None
+                        costs = ai_app.openai_client.session_costs if ai_app.openai_client else {}
+                        return {
+                            "success": True,
+                            "start_time": start_time,
+                            "end_time": end_time,
+                            "duration_seconds": end_time - start_time,
+                            "total_usd": round(costs.get("total_cost", 0.0), 6),
+                            "breakdown": [],
+                            "cost_summary": ai_app.openai_client.get_session_costs() if ai_app.openai_client else {},
+                            "message": f"Session completed (local tracking — Usage API returned {response.status_code}). Duration: {end_time - start_time}s",
+                            "source": "local"
+                        }
                     
                     data = response.json().get("data", [])
                     
@@ -886,8 +915,20 @@ def create_api_router(ai_app: "AICoHostApp") -> APIRouter:
                         })
                     
             except httpx.RequestError as e:
-                logger.warning("OpenAI API request failed, using mock data", error=str(e))
-                return await _get_mock_session_data(start_time, end_time)
+                logger.warning("OpenAI Usage API request failed", error=str(e))
+                ai_app.session_start_time = None
+                computed_costs = ai_app.openai_client.get_session_costs() if ai_app.openai_client else {"total_cost": 0.0}
+                return {
+                    "success": True,
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "duration_seconds": end_time - start_time,
+                    "total_usd": round(computed_costs.get("total_cost", 0.0), 6),
+                    "breakdown": [],
+                    "cost_summary": computed_costs,
+                    "message": f"Session completed (local tracking — network error). Duration: {end_time - start_time}s",
+                    "source": "local"
+                }
             
             # Clear session start time
             ai_app.session_start_time = None

@@ -1,0 +1,24 @@
+{
+  "name": "discord-ai-cohost",
+  "version": "1.0.0",
+  "description": "An intelligent AI-powered podcast co-host that joins Discord voice channels to enhance live podcast recordings. Supports OpenAI gpt-realtime (GA), ElevenLabs, and GPT-5.4 for a modern, cost-efficient voice AI pipeline.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MatthewPricePhd/discord-ai-cohost.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/MatthewPricePhd/discord-ai-cohost/issues"
+  },
+  "homepage": "https://github.com/MatthewPricePhd/discord-ai-cohost#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.58.2"
+  }
+}

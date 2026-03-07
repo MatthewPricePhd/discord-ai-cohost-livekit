@@ -4,110 +4,93 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{{ title }}{% endblock %}</title>
-    
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}">
-    
+
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
+    <style>
+        /* Fill viewport on large screens, allow scroll on small */
+        html, body { height: 100%; }
+        @media (min-width: 1280px) { html, body { overflow: hidden; } }
+    </style>
+
     {% block head %}{% endblock %}
 </head>
-<body class="bg-gray-900 text-white">
-    <!-- Navigation -->
-    <nav class="bg-gray-800 border-b border-gray-700">
-        <div class="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
+<body class="bg-gray-900 text-white h-screen flex flex-col">
+    <!-- Navigation - compact -->
+    <nav class="bg-gray-800 border-b border-gray-700 flex-shrink-0">
+        <div class="max-w-[1920px] mx-auto px-4">
+            <div class="flex items-center justify-between h-12">
                 <div class="flex items-center space-x-6">
                     <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <i class="fas fa-microphone-alt text-blue-400 text-2xl"></i>
-                        </div>
-                        <div class="ml-3">
-                            <h1 class="text-xl font-bold text-white">AI Co-Host Dashboard</h1>
-                        </div>
+                        <i class="fas fa-microphone-alt text-blue-400 text-xl"></i>
+                        <h1 class="ml-2 text-lg font-bold text-white">AI Co-Host Dashboard</h1>
                     </div>
-                    
-                    <!-- Compact Status Row -->
-                    <div class="hidden lg:flex items-center space-x-6 text-sm">
-                        <!-- Discord Bot Status -->
-                        <div class="flex items-center space-x-2">
+
+                    <!-- Status Row -->
+                    <div class="hidden lg:flex items-center space-x-5 text-xs">
+                        <div class="flex items-center space-x-1.5">
                             <i class="fab fa-discord text-purple-400"></i>
-                            <span class="text-gray-300">Discord:</span>
+                            <span class="text-gray-400">Discord:</span>
                             <span id="header-discord-status" class="font-medium">--</span>
                         </div>
-                        
-                        <!-- OpenAI Status -->
-                        <div class="flex items-center space-x-2">
+
+                        <div class="flex items-center space-x-1.5">
                             <i class="fas fa-brain text-green-400"></i>
-                            <span class="text-gray-300">OpenAI:</span>
+                            <span class="text-gray-400">OpenAI:</span>
                             <span id="header-openai-status" class="font-medium">--</span>
                         </div>
-                        
-                        <!-- Voice Channel -->
-                        <div class="flex items-center space-x-2">
+
+                        <div class="flex items-center space-x-1.5">
                             <i class="fas fa-microphone text-yellow-400"></i>
-                            <span class="text-gray-300">Voice:</span>
+                            <span class="text-gray-400">Voice:</span>
                             <span id="header-voice-status" class="font-medium">--</span>
                         </div>
-                        
-                        <!-- Latency -->
-                        <div class="flex items-center space-x-2">
+
+                        <div class="flex items-center space-x-1.5">
                             <i class="fas fa-wifi text-blue-400"></i>
                             <span id="header-latency" class="font-medium">--ms</span>
                         </div>
                     </div>
                 </div>
-                
-                <div class="flex items-center space-x-4">
-                    <!-- Mode indicator -->
-                    <div class="flex items-center space-x-2">
-                        <span class="text-sm text-gray-300">Mode:</span>
-                        <span id="mode-indicator" class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-600 text-gray-200">
+
+                <div class="flex items-center space-x-4 text-xs">
+                    <div class="flex items-center space-x-1.5">
+                        <span class="text-gray-400">Mode:</span>
+                        <span id="mode-indicator" class="px-2 py-0.5 text-xs font-semibold rounded-full bg-gray-600 text-gray-200">
                             Inactive
                         </span>
                     </div>
-                    
-                    <!-- Connection Status indicator -->
-                    <div class="flex items-center space-x-2">
-                        <div id="connection-indicator" class="w-3 h-3 rounded-full bg-gray-500"></div>
-                        <span id="connection-text" class="text-sm text-gray-300">Checking...</span>
+
+                    <div class="flex items-center space-x-1.5">
+                        <div id="connection-indicator" class="w-2.5 h-2.5 rounded-full bg-gray-500"></div>
+                        <span id="connection-text" class="text-gray-300">Checking...</span>
                     </div>
-                    
-                    <!-- System Health indicator -->
-                    <div class="flex items-center space-x-2">
-                        <div id="health-indicator" class="w-3 h-3 rounded-full bg-gray-500"></div>
-                        <span id="health-text" class="text-sm text-gray-300">Unknown</span>
+
+                    <div class="flex items-center space-x-1.5">
+                        <div id="health-indicator" class="w-2.5 h-2.5 rounded-full bg-gray-500"></div>
+                        <span id="health-text" class="text-gray-300">Unknown</span>
                     </div>
-                </div>
-            </div>
-        </div>
-    </nav>
-    
-    <!-- Main content -->
-    <main class="max-w-[1920px] mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        {% block content %}{% endblock %}
-    </main>
-    
-    <!-- Footer -->
-    <footer class="bg-gray-800 border-t border-gray-700 mt-12">
-        <div class="max-w-[1920px] mx-auto py-4 px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between">
-                <p class="text-gray-400 text-sm">
-                    Discord AI Co-Host Bot v1.0.0
-                </p>
-                <div class="flex items-center space-x-4">
-                    <a href="/logs" class="text-gray-400 hover:text-white text-sm" target="_blank">
-                        <i class="fas fa-list mr-1"></i>Logs & Errors
+
+                    <a href="/logs" class="text-gray-400 hover:text-white ml-2" target="_blank" title="Logs & Errors">
+                        <i class="fas fa-list"></i>
                     </a>
                 </div>
             </div>
         </div>
-    </footer>
-    
+    </nav>
+
+    <!-- Main content - fills remaining space -->
+    <main class="max-w-[1920px] w-full mx-auto py-3 px-4 flex-1 min-h-0">
+        {% block content %}{% endblock %}
+    </main>
+
     <!-- JavaScript -->
     <script src="{{ url_for('static', path='/js/app.js') }}"></script>
     {% block scripts %}{% endblock %}

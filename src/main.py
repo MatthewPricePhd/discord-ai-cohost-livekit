@@ -6,6 +6,7 @@ import signal
 import sys
 from typing import Optional
 
+import discord
 from .bot import DiscordClient
 from .api import OpenAIClient
 from .web import create_web_app
@@ -32,22 +33,25 @@ class AICoHostApp:
         """Start the AI Co-Host application"""
         try:
             logger.info("Starting AI Co-Host Bot", version="1.0.0", env=settings.env)
-            
+
             # Initialize components
             await self._initialize_components()
-            
-            # Setup audio pipeline
-            await self._setup_audio_pipeline()
-            
-            # Start web server
+
+            # Start web server first so dashboard is always available
             await self._start_web_server()
-            
-            # Start Discord bot
+
+            # Setup audio pipeline (OpenAI Realtime connection)
+            try:
+                await self._setup_audio_pipeline()
+            except Exception as e:
+                logger.error("Audio pipeline setup failed — will retry on voice join", error=str(e))
+
+            # Start Discord bot (non-fatal if it fails)
             await self._start_discord_bot()
-            
+
             self.running = True
             logger.info("AI Co-Host Bot started successfully")
-            
+
         except Exception as e:
             logger.error("Failed to start AI Co-Host Bot", error=str(e))
             await self.shutdown()
@@ -151,17 +155,37 @@ class AICoHostApp:
         """Start the Discord bot"""
         try:
             # Start bot in background task
-            asyncio.create_task(self.discord_client.start(settings.discord_bot_token))
-            
-            # Wait for bot to be ready
-            while not self.discord_client._ready:
-                await asyncio.sleep(0.1)
-            
-            logger.info("Discord bot started successfully")
-            
+            bot_task = asyncio.create_task(self.discord_client.start(settings.discord_bot_token))
+
+            # Add error handler so unhandled exceptions get logged
+            def _on_bot_done(task):
+                if task.cancelled():
+                    logger.warning("Discord bot task was cancelled")
+                elif task.exception():
+                    logger.error("Discord bot task failed", error=str(task.exception()))
+            bot_task.add_done_callback(_on_bot_done)
+
+            # Wait for bot to be ready with timeout
+            timeout = 30  # seconds
+            elapsed = 0
+            while not self.discord_client._ready and elapsed < timeout:
+                await asyncio.sleep(0.5)
+                elapsed += 0.5
+                # Check if bot task already failed
+                if bot_task.done() and bot_task.exception():
+                    raise bot_task.exception()
+
+            if not self.discord_client._ready:
+                logger.warning("Discord bot did not become ready within timeout — web server will continue running")
+            else:
+                logger.info("Discord bot started successfully")
+
+        except discord.LoginFailure as e:
+            logger.error("Discord login failed — check your DISCORD_BOT_TOKEN", error=str(e))
+            logger.info("Web server will continue running. Fix the token and restart.")
         except Exception as e:
             logger.error("Failed to start Discord bot", error=str(e))
-            raise
+            logger.info("Web server will continue running without Discord.")
     
     async def shutdown(self):
         """Shutdown the application gracefully"""

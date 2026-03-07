@@ -25,8 +25,8 @@ class VoiceManager:
         self.is_speaking = False
         self._connection_lock = asyncio.Lock()
         
-    async def join_voice_channel(self, channel: discord.VoiceChannel) -> bool:
-        """Join a Discord voice channel"""
+    async def join_voice_channel(self, channel) -> bool:
+        """Join a Discord voice or stage channel"""
         async with self._connection_lock:
             try:
                 if self.voice_client and self.voice_client.is_connected():
@@ -47,12 +47,22 @@ class VoiceManager:
                 self.current_channel = channel
 
                 # Initialize VAD if not already loaded
-                if self.audio_handler.vad is None:
-                    self.audio_handler.initialize_vad()
+                try:
+                    if self.audio_handler.vad is None:
+                        self.audio_handler.initialize_vad()
+                except Exception as e:
+                    logger.warning("VAD initialization failed, continuing without VAD", error=str(e))
 
-                # Set up audio capture
+                # Set up audio capture sink
                 sink = self.audio_handler.create_audio_sink()
-                self.voice_client.listen(sink)
+
+                # Try to start listening (requires py-cord or voice-recv extension)
+                if hasattr(self.voice_client, 'listen'):
+                    self.voice_client.listen(sink)
+                else:
+                    logger.warning("Voice receiving not supported with this discord.py version. "
+                                   "Audio capture requires py-cord or discord-ext-voice-recv. "
+                                   "Bot can still join and speak but cannot capture incoming audio.")
                 
                 logger.info("Successfully joined voice channel",
                            channel_id=channel.id,

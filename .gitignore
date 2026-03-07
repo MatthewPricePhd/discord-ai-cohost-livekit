@@ -55,6 +55,7 @@ exports/
 .docker/
 
 # Frontend
+node_modules/
 frontend/node_modules/
 frontend/dist/
 frontend/build/
@@ -74,6 +75,7 @@ Thumbs.db
 htmlcov/
 .tox/
 .hypothesis/
+test-results/
 
 # Jupyter Notebook
 .ipynb_checkpoints
@@ -82,3 +84,4 @@ htmlcov/
 *.bak
 *.tmp
 *.temp
+.env_backup.txt
