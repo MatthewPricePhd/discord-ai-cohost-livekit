@@ -8,7 +8,7 @@ import re
 
 import requests
 from bs4 import BeautifulSoup
-import newspaper3k
+import newspaper
 
 from ..config import get_logger, settings
 
