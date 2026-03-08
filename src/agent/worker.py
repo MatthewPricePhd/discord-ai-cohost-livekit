@@ -237,7 +237,7 @@ async def entrypoint(ctx: agents.JobContext):
     # Greet when joining
     try:
         await session.generate_reply(
-            instructions="Briefly introduce yourself as the AI co-host. Say you're here to help with the podcast and you're ready when they are. Keep it to one sentence."
+            instructions="In English, briefly introduce yourself as the AI co-host. Say you're here to help with the podcast and you're ready when they are. Keep it to one sentence. Speak in English only."
         )
     except Exception as e:
         logger.warning("Failed to generate greeting", error=str(e))
