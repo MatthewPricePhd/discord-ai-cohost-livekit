@@ -131,6 +131,10 @@
                 <label class="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider">Your Name</label>
                 <input id="host-name" type="text" value="Host" class="input-field" placeholder="e.g., Matthew">
             </div>
+            <div class="flex items-center gap-2 mb-3">
+                <input type="checkbox" id="open-control" class="accent-indigo-500 w-4 h-4 rounded">
+                <label for="open-control" class="text-xs text-gray-400 cursor-pointer">Open Control Room instead of Studio</label>
+            </div>
             <button id="create-btn" onclick="createAndJoin()" class="create-btn">
                 Create &amp; Join Studio
             </button>
@@ -166,8 +170,15 @@
                 });
                 const data = await res.json();
                 if (data.success) {
-                    btn.innerHTML = '<span class="spinner"></span>Joining studio...';
-                    window.location.href = "/studio/join?token=" + data.host_token;
+                    // Check if user wants Control Room instead
+                    const goToControl = document.getElementById("open-control")?.checked;
+                    if (goToControl) {
+                        btn.innerHTML = '<span class="spinner"></span>Opening control room...';
+                        window.location.href = "/control?token=" + data.host_token;
+                    } else {
+                        btn.innerHTML = '<span class="spinner"></span>Joining studio...';
+                        window.location.href = "/studio/join?token=" + data.host_token;
+                    }
                 } else {
                     showError(data.detail || "Failed to create room");
                     resetButton();
