@@ -72,6 +72,32 @@ def create_web_app(ai_app: "AICoHostApp") -> FastAPI:
             logger.error("Error rendering dashboard", error=str(e))
             raise HTTPException(status_code=500, detail="Internal server error")
     
+    # Studio join route
+    @app.get("/studio/join", response_class=HTMLResponse)
+    async def studio_join(request: Request, token: str):
+        """Studio view — join a room with a token."""
+        try:
+            return templates.TemplateResponse("studio.html", {
+                "request": request,
+                "livekit_url": settings.livekit_url,
+                "token": token,
+            })
+        except Exception as e:
+            logger.error("Error rendering studio", error=str(e))
+            raise HTTPException(status_code=500, detail="Internal server error")
+
+    # Studio create route
+    @app.get("/studio/create", response_class=HTMLResponse)
+    async def studio_create(request: Request):
+        """Quick-create a room and redirect to studio."""
+        try:
+            return templates.TemplateResponse("studio_create.html", {
+                "request": request,
+            })
+        except Exception as e:
+            logger.error("Error rendering studio create page", error=str(e))
+            raise HTTPException(status_code=500, detail="Internal server error")
+
     # Health page route
     @app.get("/health", response_class=HTMLResponse)
     async def health_page(request: Request):

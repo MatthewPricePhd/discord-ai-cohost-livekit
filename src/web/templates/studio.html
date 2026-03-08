@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Podcast Studio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: {
+                colors: {
+                    'studio-bg': '#09090f',
+                    'studio-surface': '#111119',
+                    'studio-card': '#16161f',
+                    'studio-border': '#232336',
+                    'studio-accent': '#6366f1',
+                    'studio-accent-light': '#818cf8',
+                    'studio-glow': '#6366f1',
+                },
+                fontFamily: {
+                    'sans': ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                    'mono': ['JetBrains Mono', 'Fira Code', 'monospace'],
+                },
+            }}
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Inter', system-ui, sans-serif; }
+
+        /* Video tiles */
+        video {
+            border-radius: 0.75rem;
+            object-fit: cover;
+            background: #16161f;
+        }
+
+        .participant-tile {
+            position: relative;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            border: 1px solid #232336;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        .participant-tile:hover {
+            border-color: #6366f140;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.08);
+        }
+
+        .participant-name {
+            position: absolute;
+            bottom: 10px;
+            left: 12px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            padding: 4px 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            color: white;
+            font-weight: 500;
+            letter-spacing: 0.01em;
+        }
+
+        /* AI Co-Host avatar */
+        .ai-avatar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #6366f1 100%);
+            background-size: 200% 200%;
+            animation: gradient-shift 6s ease-in-out infinite;
+            border-radius: 0.75rem;
+            position: relative;
+            overflow: hidden;
+        }
+        .ai-avatar::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 30% 40%, rgba(255,255,255,0.08) 0%, transparent 60%);
+        }
+        .ai-avatar-icon {
+            position: relative;
+            z-index: 1;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            transition: transform 0.3s ease;
+        }
+
+        @keyframes gradient-shift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .ai-speaking .ai-avatar-icon {
+            animation: pulse-scale 1s ease-in-out infinite;
+        }
+        .ai-speaking::after {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 0.85rem;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6, #6366f1);
+            background-size: 200% 200%;
+            animation: glow-ring 2s ease-in-out infinite;
+            z-index: -1;
+            opacity: 0.6;
+        }
+
+        @keyframes pulse-scale {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+        }
+        @keyframes glow-ring {
+            0%, 100% {
+                background-position: 0% 50%;
+                box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+            }
+            50% {
+                background-position: 100% 50%;
+                box-shadow: 0 0 40px rgba(99, 102, 241, 0.5);
+            }
+        }
+
+        /* Audio visualizer bars for AI */
+        .audio-bars {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            height: 24px;
+            margin-top: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .audio-bar {
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 2px;
+            transition: height 0.15s ease;
+        }
+        .ai-speaking .audio-bar {
+            animation: bar-dance 0.8s ease-in-out infinite;
+            background: rgba(255, 255, 255, 0.8);
+        }
+        .ai-speaking .audio-bar:nth-child(1) { animation-delay: 0s; }
+        .ai-speaking .audio-bar:nth-child(2) { animation-delay: 0.1s; }
+        .ai-speaking .audio-bar:nth-child(3) { animation-delay: 0.2s; }
+        .ai-speaking .audio-bar:nth-child(4) { animation-delay: 0.15s; }
+        .ai-speaking .audio-bar:nth-child(5) { animation-delay: 0.05s; }
+
+        @keyframes bar-dance {
+            0%, 100% { height: 4px; }
+            50% { height: 20px; }
+        }
+
+        /* Live indicator */
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ef4444;
+            animation: live-pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes live-pulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            50% { opacity: 0.8; box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+        }
+
+        /* Transcript panel */
+        #transcript-box {
+            scroll-behavior: smooth;
+        }
+        #transcript-box::-webkit-scrollbar { width: 5px; }
+        #transcript-box::-webkit-scrollbar-track { background: transparent; }
+        #transcript-box::-webkit-scrollbar-thumb { background: #2a2a3a; border-radius: 3px; }
+        #transcript-box::-webkit-scrollbar-thumb:hover { background: #3a3a4a; }
+
+        .transcript-entry {
+            animation: fade-in 0.3s ease-out;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(35, 35, 54, 0.5);
+        }
+        .transcript-entry:last-child { border-bottom: none; }
+
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Buttons */
+        .studio-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 10px;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .studio-btn:active { transform: scale(0.97); }
+
+        .btn-surface {
+            background: #16161f;
+            border-color: #232336;
+            color: #e5e7eb;
+        }
+        .btn-surface:hover { background: #1e1e2d; border-color: #6366f140; }
+        .btn-surface.active { background: #6366f120; border-color: #6366f160; color: #818cf8; }
+        .btn-surface.muted { background: #dc262620; border-color: #dc262640; color: #f87171; }
+
+        .btn-accent {
+            background: linear-gradient(135deg, #4f46e5, #6366f1);
+            color: white;
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+        }
+        .btn-accent:hover { box-shadow: 0 4px 16px rgba(99, 102, 241, 0.35); }
+
+        .btn-danger {
+            background: rgba(220, 38, 38, 0.15);
+            border-color: rgba(220, 38, 38, 0.3);
+            color: #f87171;
+        }
+        .btn-danger:hover { background: rgba(220, 38, 38, 0.25); }
+
+        /* Video grid auto-scaling */
+        #video-grid.cols-1 { grid-template-columns: 1fr; }
+        #video-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+        #video-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+
+        /* Chat input */
+        .chat-input {
+            background: #111119;
+            border: 1px solid #232336;
+            border-radius: 10px;
+            padding: 10px 14px;
+            color: white;
+            font-size: 0.8125rem;
+            transition: border-color 0.2s ease;
+            outline: none;
+        }
+        .chat-input:focus { border-color: #6366f180; }
+        .chat-input::placeholder { color: #555; }
+    </style>
+</head>
+<body class="bg-studio-bg text-white min-h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="flex items-center justify-between px-5 py-2.5 border-b border-studio-border bg-studio-surface/80 backdrop-blur-sm">
+        <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2">
+                <svg class="w-5 h-5 text-studio-accent" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                </svg>
+                <h1 class="text-base font-semibold tracking-tight">Podcast Studio</h1>
+            </div>
+            <div id="room-status" class="flex items-center gap-2 text-xs px-3 py-1 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                <div class="w-1.5 h-1.5 rounded-full bg-yellow-400"></div>
+                Connecting...
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <button id="btn-mic" onclick="toggleMic()" class="studio-btn btn-surface active">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                <span>Mic</span>
+            </button>
+            <button id="btn-cam" onclick="toggleCam()" class="studio-btn btn-surface active">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                <span>Cam</span>
+            </button>
+            <div class="w-px h-6 bg-studio-border mx-1"></div>
+            <button id="btn-ask-ai" onclick="askAI()" class="studio-btn btn-accent">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1.27A7 7 0 0 1 14 22h-4a7 7 0 0 1-6.73-3H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/></svg>
+                <span>Ask AI</span>
+            </button>
+            <button id="btn-leave" onclick="leaveRoom()" class="studio-btn btn-danger">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                <span>Leave</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main content -->
+    <main class="flex-1 flex gap-3 p-3 overflow-hidden min-h-0">
+
+        <!-- Video grid -->
+        <div class="flex-1 flex flex-col gap-3 min-w-0">
+            <div id="video-grid" class="flex-1 grid cols-2 gap-3 auto-rows-fr">
+                <!-- AI Co-Host tile (always present) -->
+                <div class="participant-tile" id="ai-tile-wrapper">
+                    <div id="ai-tile" class="ai-avatar w-full h-full min-h-[200px] flex flex-col items-center justify-center">
+                        <div class="ai-avatar-icon">
+                            <svg class="w-10 h-10 text-white/90" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1.27A7 7 0 0 1 14 22h-4a7 7 0 0 1-6.73-3H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/>
+                            </svg>
+                        </div>
+                        <div class="audio-bars">
+                            <div class="audio-bar"></div>
+                            <div class="audio-bar"></div>
+                            <div class="audio-bar"></div>
+                            <div class="audio-bar"></div>
+                            <div class="audio-bar"></div>
+                        </div>
+                    </div>
+                    <div class="participant-name">
+                        <span class="inline-block w-1.5 h-1.5 rounded-full bg-studio-accent mr-1.5"></span>
+                        AI Co-Host
+                    </div>
+                </div>
+                <!-- Participant tiles added dynamically -->
+            </div>
+        </div>
+
+        <!-- Right sidebar: transcript + chat -->
+        <div class="w-80 flex flex-col gap-3 flex-shrink-0">
+            <!-- Live transcript -->
+            <div class="flex-1 bg-studio-card border border-studio-border rounded-xl flex flex-col overflow-hidden min-h-0">
+                <div class="px-4 py-2.5 border-b border-studio-border flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-3.5 h-3.5 text-studio-accent-light" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+                        <span class="text-xs font-semibold tracking-wide uppercase text-gray-400">Live Transcript</span>
+                    </div>
+                    <span id="transcript-count" class="text-[10px] text-gray-500 font-mono">0 entries</span>
+                </div>
+                <div id="transcript-box" class="flex-1 overflow-y-auto p-3 space-y-0 text-sm text-gray-300">
+                    <p class="text-gray-600 italic text-xs text-center py-8">Transcript will appear here as participants speak...</p>
+                </div>
+            </div>
+
+            <!-- Chat / message input -->
+            <div class="bg-studio-card border border-studio-border rounded-xl p-3">
+                <div class="flex gap-2">
+                    <input id="chat-input" type="text" placeholder="Send a message or ask AI..."
+                        class="chat-input flex-1"
+                        onkeydown="if(event.key==='Enter')sendChat()">
+                    <button onclick="sendChat()" class="studio-btn btn-accent" style="padding: 8px 16px;">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9"/></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- LiveKit JS SDK from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.js"></script>
+    <script>
+        // Config injected by server
+        const LIVEKIT_URL = "{{ livekit_url }}";
+        const TOKEN = "{{ token }}";
+    </script>
+    <script src="/static/js/studio.js"></script>
+</body>
+</html>

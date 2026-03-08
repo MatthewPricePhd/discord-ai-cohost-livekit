@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Podcast Session</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: {
+                colors: {
+                    'studio-bg': '#09090f',
+                    'studio-surface': '#111119',
+                    'studio-card': '#16161f',
+                    'studio-border': '#232336',
+                    'studio-accent': '#6366f1',
+                },
+            }}
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Inter', system-ui, sans-serif; }
+
+        .glass-card {
+            background: rgba(22, 22, 31, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid #232336;
+            border-radius: 1.25rem;
+        }
+
+        .input-field {
+            width: 100%;
+            background: #111119;
+            border: 1px solid #232336;
+            border-radius: 0.75rem;
+            padding: 12px 16px;
+            color: white;
+            font-size: 0.9rem;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            outline: none;
+        }
+        .input-field:focus {
+            border-color: #6366f180;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+        .input-field::placeholder { color: #555; }
+
+        .create-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #4f46e5, #6366f1);
+            border: none;
+            border-radius: 0.75rem;
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 16px rgba(99, 102, 241, 0.25);
+        }
+        .create-btn:hover {
+            box-shadow: 0 6px 24px rgba(99, 102, 241, 0.35);
+            transform: translateY(-1px);
+        }
+        .create-btn:active { transform: translateY(0); }
+        .create-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .bg-dots {
+            background-image: radial-gradient(circle, #232336 1px, transparent 1px);
+            background-size: 32px 32px;
+        }
+
+        @keyframes fade-up {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-up {
+            animation: fade-up 0.5s ease-out;
+        }
+
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-studio-bg text-white min-h-screen flex items-center justify-center bg-dots">
+
+    <div class="glass-card p-8 w-full max-w-md animate-fade-up">
+        <!-- Header -->
+        <div class="flex items-center gap-3 mb-2">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                    <line x1="12" y1="19" x2="12" y2="23"/>
+                    <line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold">New Podcast Session</h1>
+                <p class="text-xs text-gray-500">Create a room and start recording</p>
+            </div>
+        </div>
+
+        <div class="mt-6 space-y-5">
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider">Episode Title</label>
+                <input id="title" type="text" value="Podcast Session" class="input-field" placeholder="e.g., AI and the Future of Work">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider">Your Name</label>
+                <input id="host-name" type="text" value="Host" class="input-field" placeholder="e.g., Matthew">
+            </div>
+            <button id="create-btn" onclick="createAndJoin()" class="create-btn">
+                Create &amp; Join Studio
+            </button>
+        </div>
+
+        <div id="error" class="mt-4 text-red-400 text-sm hidden bg-red-500/10 border border-red-500/20 rounded-lg p-3"></div>
+
+        <p class="text-center text-[11px] text-gray-600 mt-6">
+            AI Co-Host will join automatically once the room is created
+        </p>
+    </div>
+
+    <script>
+        async function createAndJoin() {
+            const title = document.getElementById("title").value.trim();
+            const hostName = document.getElementById("host-name").value.trim();
+            const btn = document.getElementById("create-btn");
+
+            if (!title || !hostName) {
+                showError("Please fill in both fields.");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span>Creating room...';
+            hideError();
+
+            try {
+                const res = await fetch("/api/rooms/create", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ title: title, host_name: hostName }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                    btn.innerHTML = '<span class="spinner"></span>Joining studio...';
+                    window.location.href = "/studio/join?token=" + data.host_token;
+                } else {
+                    showError(data.detail || "Failed to create room");
+                    resetButton();
+                }
+            } catch (err) {
+                showError(err.message);
+                resetButton();
+            }
+        }
+
+        function showError(msg) {
+            const el = document.getElementById("error");
+            el.textContent = msg;
+            el.classList.remove("hidden");
+        }
+
+        function hideError() {
+            document.getElementById("error").classList.add("hidden");
+        }
+
+        function resetButton() {
+            const btn = document.getElementById("create-btn");
+            btn.disabled = false;
+            btn.textContent = "Create & Join Studio";
+        }
+
+        // Allow Enter key to submit
+        document.addEventListener("keydown", function(e) {
+            if (e.key === "Enter") createAndJoin();
+        });
+    </script>
+</body>
+</html>
