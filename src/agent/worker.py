@@ -128,7 +128,6 @@ async def entrypoint(ctx: agents.JobContext):
             model="gpt-4o-realtime-preview",
             temperature=0.7,
             modalities=["text", "audio"],
-            language="en",
         ),
         vad=silero.VAD.load(),
     )
