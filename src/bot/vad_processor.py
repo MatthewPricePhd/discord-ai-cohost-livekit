@@ -52,37 +52,66 @@ class VADProcessor:
         logger.info("Silero VAD model loaded")
         return processor
 
-    def _resample_24k_to_16k(self, audio_24k: np.ndarray) -> np.ndarray:
-        """Resample from 24kHz to 16kHz using linear interpolation"""
-        num_samples_16k = int(len(audio_24k) * 16000 / 24000)
-        indices = np.linspace(0, len(audio_24k) - 1, num_samples_16k)
-        return np.interp(indices, np.arange(len(audio_24k)), audio_24k).astype(np.float32)
+    def _resample(self, audio: np.ndarray, from_rate: int, to_rate: int) -> np.ndarray:
+        """Resample audio using linear interpolation"""
+        if from_rate == to_rate:
+            return audio
+        num_samples = int(len(audio) * to_rate / from_rate)
+        indices = np.linspace(0, len(audio) - 1, num_samples)
+        return np.interp(indices, np.arange(len(audio)), audio).astype(np.float32)
 
-    def process_audio(self, audio_chunk: bytes) -> VADResult:
-        """Process a chunk of 24kHz mono PCM16 audio through Silero VAD.
+    def _stereo_to_mono(self, audio_int16: np.ndarray) -> np.ndarray:
+        """Convert interleaved stereo int16 to mono float32"""
+        # Reshape to (N, 2) and average channels
+        stereo = audio_int16.reshape(-1, 2).astype(np.float32)
+        return (stereo[:, 0] + stereo[:, 1]) / (2.0 * 32768.0)
+
+    def process_audio(self, audio_chunk: bytes, sample_rate: int = 24000, channels: int = 1) -> VADResult:
+        """Process a chunk of PCM16 audio through Silero VAD.
+
+        Accepts any sample rate and channel count. Converts to 16kHz mono
+        and chunks into 512-sample segments for Silero.
 
         Returns a VADResult with speech probability and is_speech flag.
-        Also triggers on_speech_start/on_speech_end callbacks based on
-        min duration thresholds.
         """
         if self._model is None:
             raise RuntimeError("VAD model not loaded. Use VADProcessor.load() to create an instance.")
 
-        # Decode PCM16 to float32
+        # Decode PCM16 to float32 mono
         audio_int16 = np.frombuffer(audio_chunk, dtype=np.int16)
-        audio_f32 = audio_int16.astype(np.float32) / 32768.0
 
-        # Resample 24kHz -> 16kHz
-        audio_16k = self._resample_24k_to_16k(audio_f32)
+        if channels == 2:
+            audio_f32 = self._stereo_to_mono(audio_int16)
+        else:
+            audio_f32 = audio_int16.astype(np.float32) / 32768.0
 
-        # Run Silero VAD (expects float32 tensor, 16kHz)
-        tensor = torch.from_numpy(audio_16k)
-        probability = float(self._model(tensor, 16000))
+        # Resample to 16kHz
+        audio_16k = self._resample(audio_f32, sample_rate, 16000)
 
-        is_speech = probability >= self.threshold
+        # Silero VAD requires exactly 512 samples at 16kHz.
+        # Buffer and process in 512-sample chunks, return result from last chunk.
+        if not hasattr(self, '_vad_buffer'):
+            self._vad_buffer = np.array([], dtype=np.float32)
 
-        # Track duration of audio processed (based on input at 24kHz)
-        chunk_duration_ms = len(audio_int16) * 1000 / 24000
+        self._vad_buffer = np.concatenate([self._vad_buffer, audio_16k])
+
+        probability = 0.0
+        is_speech = False
+        processed_any = False
+
+        while len(self._vad_buffer) >= 512:
+            chunk = self._vad_buffer[:512]
+            self._vad_buffer = self._vad_buffer[512:]
+            tensor = torch.from_numpy(chunk)
+            probability = float(self._model(tensor, 16000))
+            is_speech = probability >= self.threshold
+            processed_any = True
+
+        if not processed_any:
+            return VADResult(speech_probability=0.0, is_speech=False)
+
+        # Track duration of audio processed
+        chunk_duration_ms = (len(audio_int16) / channels) * 1000 / sample_rate
         self._elapsed_ms += chunk_duration_ms
 
         # State machine for speech start/end with duration thresholds
@@ -113,6 +142,7 @@ class VADProcessor:
         self._speech_start_ms = 0
         self._silence_start_ms = 0
         self._elapsed_ms = 0
+        self._vad_buffer = np.array([], dtype=np.float32)
         if self._model is not None:
             self._model.reset_states()
 

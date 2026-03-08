@@ -202,14 +202,25 @@ class AudioHandler:
             self.sink.audio_callback = self._make_vad_callback(callback)
 
     def _make_vad_callback(self, callback: Callable[[bytes, int], None]) -> Callable[[bytes, int], None]:
-        """Wrap the audio callback with VAD filtering"""
+        """Wrap the audio callback with VAD filtering.
+
+        Audio from the voice receiver is 48kHz stereo PCM16.
+        The inner callback may be async (coroutine function), so we must
+        detect that and schedule it properly when called from a thread.
+        """
         if self.vad is None:
             return callback
 
-        def vad_filtered_callback(audio_data: bytes, user_id: int) -> None:
-            result = self.vad.process_audio(audio_data)
+        import asyncio
+
+        def vad_filtered_callback(audio_data: bytes, user_id: int):
+            result = self.vad.process_audio(audio_data, sample_rate=48000, channels=2)
             if result.is_speech:
-                callback(audio_data, user_id)
+                ret = callback(audio_data, user_id)
+                # If inner callback is async, return the coroutine so the
+                # caller (voice_receiver) can schedule it on the event loop.
+                if asyncio.iscoroutine(ret):
+                    return ret
 
         return vad_filtered_callback
     

@@ -1,7 +1,7 @@
 """
 Voice channel management for Discord AI Co-Host Bot
 Uses disnake with DAVE E2EE support for voice connections.
-Audio receive (Sink) is not yet implemented — this handles connection and playback only.
+Audio receive via custom VoiceReceiver that reads the raw UDP socket.
 """
 import asyncio
 import time
@@ -11,6 +11,7 @@ import disnake
 from disnake.ext import commands
 
 from .audio_handler import AudioHandler
+from .voice_receiver import VoiceReceiver
 from ..config import get_logger, settings
 
 logger = get_logger(__name__)
@@ -29,6 +30,7 @@ class VoiceManager:
         self._connection_lock = asyncio.Lock()
         self._recording_callback: Optional[Callable] = None
         self._connected_at: float = 0
+        self._voice_receiver: Optional[VoiceReceiver] = None
 
     async def join_voice_channel(self, channel) -> bool:
         """Join a Discord voice or stage channel"""
@@ -51,6 +53,13 @@ class VoiceManager:
                 self.voice_client = await channel.connect()
                 self.current_channel = channel
                 self._connected_at = time.monotonic()
+
+                # Initialize VAD if not already loaded
+                try:
+                    if self.audio_handler.vad is None:
+                        self.audio_handler.initialize_vad()
+                except Exception as e:
+                    logger.warning("VAD initialization failed, continuing without VAD", error=str(e))
 
                 logger.info("Successfully joined voice channel",
                             channel_id=channel.id,
@@ -86,24 +95,35 @@ class VoiceManager:
                 logger.error("Error leaving voice channel", error=str(e))
 
     async def start_listening(self) -> None:
-        """Start listening to voice channel audio.
-
-        NOTE: disnake does not have a built-in Sink/recording API like Pycord.
-        Audio receive will be implemented separately.
-        For now, this sets the listening flag for status tracking.
-        """
+        """Start listening to voice channel audio via VoiceReceiver."""
         if not self.voice_client:
             logger.warning("Cannot start listening: no voice client")
             return
 
+        if self.is_listening:
+            return
+
+        # Send all audio to the callback (OpenAI's server VAD handles
+        # speech detection). Local VAD filtering was too aggressive and
+        # starved OpenAI of the continuous audio it needs.
+        callback = self.audio_handler.audio_callback
+
+        # Create and start the voice receiver
+        self._voice_receiver = VoiceReceiver(self.voice_client, callback=callback)
+        self._voice_receiver.start()
+
         self.is_listening = True
-        logger.info("Listening mode enabled (audio receive not yet implemented)",
+        logger.info("Started listening to voice channel",
                     channel_id=self.current_channel.id if self.current_channel else None)
 
     async def stop_listening(self) -> None:
         """Stop listening to voice channel audio"""
         if not self.is_listening:
             return
+
+        if self._voice_receiver:
+            self._voice_receiver.stop()
+            self._voice_receiver = None
 
         self.is_listening = False
         logger.info("Stopped listening to voice channel")

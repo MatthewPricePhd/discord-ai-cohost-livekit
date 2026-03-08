@@ -169,20 +169,26 @@ Communication style:
 
 You have access to pre-loaded research documents that can inform your responses. Use this information to provide valuable insights when relevant to the current discussion topic."""
     
+    _send_audio_count = 0
+
     async def send_audio(self, audio_data: bytes):
         """Send audio data to the API"""
         if not self.ws_manager.is_connected:
             logger.warning("Cannot send audio: not connected")
             return
-        
+
+        RealtimeHandler._send_audio_count += 1
+        if RealtimeHandler._send_audio_count <= 3 or RealtimeHandler._send_audio_count % 100 == 0:
+            logger.info("Sending audio to OpenAI", count=RealtimeHandler._send_audio_count, data_len=len(audio_data))
+
         # Convert to base64 for transmission
         audio_b64 = base64.b64encode(audio_data).decode('utf-8')
-        
+
         message = {
             "type": "input_audio_buffer.append",
             "audio": audio_b64
         }
-        
+
         await self.ws_manager.send_message(message)
     
     async def commit_audio_buffer(self):

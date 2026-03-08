@@ -7,6 +7,7 @@ import sys
 from typing import Optional
 
 import disnake
+import numpy as np
 from .bot import DiscordClient
 from .api import OpenAIClient
 from .web import create_web_app
@@ -89,9 +90,71 @@ class AICoHostApp:
         
         # Setup callbacks for audio flow
         # Discord audio -> OpenAI
+        # VoiceReceiver delivers 48kHz stereo PCM16; OpenAI Realtime expects 24kHz mono PCM16
+        _audio_cb_count = [0]
+        _last_audio_time = [0.0]
+        _silence_task = [None]
+        # 20ms of silence at 24kHz mono PCM16 = 480 samples * 2 bytes = 960 bytes
+        _silence_frame = b'\x00' * 960
+        # WAV debug: save first 5 seconds of raw PCM for analysis
+        _debug_pcm = [bytearray()]
+        _debug_saved = [False]
+
+        async def _send_silence_padding():
+            """Send silence frames so OpenAI VAD detects end of speech."""
+            import time as _time
+            await asyncio.sleep(0.3)
+            now = _time.monotonic()
+            if now - _last_audio_time[0] >= 0.25:
+                for _ in range(50):
+                    if self.is_passive_mode:
+                        break
+                    await self.openai_client.send_audio_to_realtime(_silence_frame)
+                    await asyncio.sleep(0.02)
+                logger.info("Sent silence padding to OpenAI for VAD end-of-speech")
+
+        def _resample_48k_to_24k(mono_int16: np.ndarray) -> np.ndarray:
+            """Resample 48kHz mono to 24kHz mono with proper anti-aliasing."""
+            from scipy.signal import resample_poly
+            # resample_poly with up=1, down=2 applies anti-alias filter automatically
+            resampled = resample_poly(mono_int16.astype(np.float64), up=1, down=2)
+            return np.clip(resampled, -32768, 32767).astype(np.int16)
+
         async def on_discord_audio(audio_data: bytes, user_id: int):
-            if not self.is_passive_mode:  # Only send audio when not in passive mode
-                await self.openai_client.send_audio_to_realtime(audio_data)
+            import time as _time
+            _audio_cb_count[0] += 1
+            _last_audio_time[0] = _time.monotonic()
+            if _audio_cb_count[0] <= 5 or _audio_cb_count[0] % 500 == 0:
+                logger.info("on_discord_audio called", count=_audio_cb_count[0], data_len=len(audio_data), user_id=user_id, passive=self.is_passive_mode)
+            if not self.is_passive_mode:
+                audio_int16 = np.frombuffer(audio_data, dtype=np.int16)
+                # Stereo to mono (interleaved L/R samples)
+                if len(audio_int16) >= 2:
+                    mono = ((audio_int16[0::2].astype(np.int32) + audio_int16[1::2].astype(np.int32)) // 2).astype(np.int16)
+                else:
+                    mono = audio_int16
+                # Downsample 48kHz -> 24kHz with anti-alias filter
+                downsampled = _resample_48k_to_24k(mono)
+
+                # Debug: save raw PCM to WAV for analysis (first ~5s)
+                if not _debug_saved[0]:
+                    _debug_pcm[0].extend(downsampled.tobytes())
+                    if len(_debug_pcm[0]) > 24000 * 2 * 2:  # 2 seconds at 24kHz
+                        import wave
+                        wav_path = "/Users/matthewpricephd/coding/discord-ai-cohost/debug_audio.wav"
+                        with wave.open(wav_path, 'wb') as wf:
+                            wf.setnchannels(1)
+                            wf.setsampwidth(2)
+                            wf.setframerate(24000)
+                            wf.writeframes(bytes(_debug_pcm[0]))
+                        logger.info("Saved debug WAV", path=wav_path, size=len(_debug_pcm[0]))
+                        _debug_saved[0] = True
+
+                await self.openai_client.send_audio_to_realtime(downsampled.tobytes())
+                # Schedule silence padding after speech ends
+                if _silence_task[0] and not _silence_task[0].done():
+                    _silence_task[0].cancel()
+                _silence_task[0] = asyncio.create_task(_send_silence_padding())
         
         # OpenAI audio -> Discord
         async def on_openai_audio(audio_data: bytes):

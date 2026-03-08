@@ -184,7 +184,7 @@ class WebSocketManager:
         """Handle incoming message from API"""
         message_type = message.get('type')
         
-        logger.debug("Received message from API", message_type=message_type)
+        logger.info("Received message from API", message_type=message_type)
         
         # Call specific handler if available
         if message_type in self.message_handlers:
