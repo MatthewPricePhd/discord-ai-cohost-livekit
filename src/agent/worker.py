@@ -126,8 +126,9 @@ async def entrypoint(ctx: agents.JobContext):
         llm=openai.realtime.RealtimeModel(
             voice="coral",
             model="gpt-4o-realtime-preview",
-            temperature=0.8,
+            temperature=0.7,
             modalities=["text", "audio"],
+            language="en",
         ),
         vad=silero.VAD.load(),
     )
