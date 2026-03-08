@@ -113,6 +113,17 @@ class RoomManager:
         logger.info("Created room", name=room.name, sid=room.sid)
         return {"name": room.name, "sid": room.sid, "num_participants": room.num_participants}
 
+    async def dispatch_agent(self, room_name: str, agent_name: str = "podcast-cohost") -> dict:
+        """Explicitly dispatch an agent to join a room."""
+        dispatch = await self._get_api().agent_dispatch.create_dispatch(
+            api.CreateAgentDispatchRequest(
+                agent_name=agent_name,
+                room=room_name,
+            )
+        )
+        logger.info("Dispatched agent to room", agent=agent_name, room=room_name)
+        return {"agent_name": agent_name, "room": room_name}
+
     async def list_rooms(self) -> list:
         """List all active rooms."""
         result = await self._get_api().room.list_rooms(api.ListRoomsRequest())

@@ -37,12 +37,28 @@ async function connectToRoom() {
 
     try {
         await room.connect(LIVEKIT_URL, TOKEN);
-        await room.localParticipant.enableCameraAndMicrophone();
-        addLocalVideoTile();
-        updateGridLayout();
     } catch (err) {
-        setStatus("Connection failed", "red");
+        console.error("LiveKit connection error:", err);
+        setStatus("Connection failed: " + (err.message || err), "red");
+        return;
     }
+
+    // Connection succeeded — now try to enable camera/mic
+    try {
+        await room.localParticipant.enableCameraAndMicrophone();
+    } catch (err) {
+        console.warn("Camera+mic failed, trying mic only:", err);
+        try {
+            await room.localParticipant.setMicrophoneEnabled(true);
+            camEnabled = false;
+            setStatus("Live (mic only)", "green");
+        } catch (err2) {
+            console.warn("Mic also failed:", err2);
+            setStatus("Live (no cam/mic)", "yellow");
+        }
+    }
+    addLocalVideoTile();
+    updateGridLayout();
 }
 
 // ── Room event handlers ──────────────────────────────────────────

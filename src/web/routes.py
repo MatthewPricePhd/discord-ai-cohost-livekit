@@ -26,9 +26,7 @@ logger = get_logger(__name__)
 class StatusResponse(BaseModel):
     running: bool
     mode: str
-    discord_status: Optional[Dict[str, Any]] = None
-    openai_status: Optional[Dict[str, Any]] = None
-    web_server_running: bool
+    livekit_url: Optional[str] = None
 
 
 class ModeToggleResponse(BaseModel):
@@ -1105,6 +1103,12 @@ def create_api_router(ai_app: "StudioApp") -> APIRouter:
         app = request.app.state.studio_app
         room_name = app.room_manager.generate_room_name(title)
         room_info = await app.room_manager.create_room(room_name, metadata=json.dumps({"title": title}))
+
+        # Dispatch the AI co-host agent to join the room
+        try:
+            await app.room_manager.dispatch_agent(room_name)
+        except Exception as e:
+            logger.warning("Failed to dispatch agent to room", room=room_name, error=str(e))
 
         # Generate producer token for the host
         host_token = app.room_manager.create_token(
