@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control Room Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: {
+                colors: {
+                    'studio-bg': '#09090f',
+                    'studio-surface': '#111119',
+                    'studio-card': '#16161f',
+                    'studio-border': '#232336',
+                    'studio-accent': '#6366f1',
+                    'studio-accent-light': '#818cf8',
+                },
+                fontFamily: {
+                    'sans': ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                },
+            }}
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', system-ui, sans-serif; }
+    </style>
+</head>
+<body class="bg-studio-bg text-white min-h-screen flex items-center justify-center">
+    <div class="w-full max-w-sm px-6">
+        <div class="bg-studio-card border border-studio-border rounded-2xl p-8">
+            <div class="flex flex-col items-center mb-6">
+                <svg class="w-10 h-10 text-studio-accent mb-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                    <line x1="8" y1="21" x2="16" y2="21"/>
+                    <line x1="12" y1="17" x2="12" y2="21"/>
+                </svg>
+                <h1 class="text-lg font-semibold">Control Room</h1>
+                <p class="text-xs text-gray-500 mt-1">Enter your password to continue</p>
+            </div>
+
+            {% if error %}
+            <div class="mb-4 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs text-center">
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <form method="POST" action="/control/login">
+                <input
+                    type="password"
+                    name="password"
+                    placeholder="Password"
+                    required
+                    autofocus
+                    class="w-full bg-studio-surface border border-studio-border rounded-lg px-4 py-3 text-sm text-white placeholder-gray-500 outline-none focus:border-studio-accent/60 transition-colors mb-4"
+                >
+                {% if next_url %}
+                <input type="hidden" name="next" value="{{ next_url }}">
+                {% endif %}
+                <button
+                    type="submit"
+                    class="w-full py-3 rounded-lg text-sm font-medium text-white transition-all"
+                    style="background: linear-gradient(135deg, #4f46e5, #6366f1); box-shadow: 0 2px 8px rgba(99,102,241,0.25);"
+                >
+                    Sign In
+                </button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

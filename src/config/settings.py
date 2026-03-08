@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     secret_key: str = Field(..., description="Secret key for web application")
     web_port: int = Field(default=8000, description="Web server port")
     web_host: str = Field(default="0.0.0.0", description="Web server host")
+    control_room_password: Optional[str] = Field(default=None, description="Password for Control Room access (optional, no auth if unset)")
     
     # File Upload Configuration
     upload_dir: Path = Field(default=Path("./uploads"), description="Directory for uploaded files")
