@@ -1,4 +1,4 @@
-# Multi-stage build for LiveKit Podcast Studio — Web Server
+# Multi-stage build for LiveKit Podcast Studio — Agent Worker
 FROM python:3.11-slim as builder
 
 # Install system dependencies for building
@@ -30,7 +30,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
-RUN useradd --create-home --shell /bin/bash studio
+RUN useradd --create-home --shell /bin/bash agent
 
 WORKDIR /app
 
@@ -40,23 +40,17 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application code
 COPY src/ ./src/
-COPY run.py .
+COPY run_agent.py .
 COPY requirements.txt .
 
 # Create necessary directories
-RUN mkdir -p /app/logs /app/uploads /app/data/chroma /app/data/transcripts && \
-    chown -R studio:studio /app
+RUN mkdir -p /app/data/chroma /app/data/transcripts && \
+    chown -R agent:agent /app
 
-USER studio
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:8000/api/health || exit 1
+USER agent
 
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 ENV LOG_LEVEL=INFO
 
-EXPOSE 8000
-
-CMD ["python", "run.py"]
+CMD ["python", "run_agent.py", "start"]

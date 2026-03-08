@@ -1095,6 +1095,13 @@ def create_api_router(ai_app: "StudioApp") -> APIRouter:
         body = await request.json()
         title = body.get("title", "Podcast Session")
 
+        # Input validation
+        if not isinstance(title, str) or len(title.strip()) == 0:
+            raise HTTPException(status_code=400, detail="Title is required")
+        if len(title) > 200:
+            raise HTTPException(status_code=400, detail="Title must be 200 characters or fewer")
+        title = title.strip()
+
         app = request.app.state.studio_app
         room_name = app.room_manager.generate_room_name(title)
         room_info = await app.room_manager.create_room(room_name, metadata=json.dumps({"title": title}))
@@ -1134,6 +1141,15 @@ def create_api_router(ai_app: "StudioApp") -> APIRouter:
         body = await request.json()
         participant_name = body.get("name", "Guest")
         role = body.get("role", "guest")
+
+        # Input validation
+        if not isinstance(participant_name, str) or len(participant_name.strip()) == 0:
+            participant_name = "Guest"
+        if len(participant_name) > 100:
+            raise HTTPException(status_code=400, detail="Name must be 100 characters or fewer")
+        participant_name = participant_name.strip()
+        if role not in ("guest", "co-producer", "producer"):
+            raise HTTPException(status_code=400, detail="Role must be guest, co-producer, or producer")
 
         app = request.app.state.studio_app
         base_url = str(request.base_url).rstrip("/")
@@ -1199,9 +1215,18 @@ def create_api_router(ai_app: "StudioApp") -> APIRouter:
     async def add_transcript_entry(request: Request):
         """Store a transcript entry for later export."""
         body = await request.json()
+        speaker = body.get("speaker", "Unknown")
+        text = body.get("text", "")
+
+        # Input validation
+        if not isinstance(speaker, str) or len(speaker) > 200:
+            speaker = "Unknown"
+        if not isinstance(text, str) or len(text) > 50000:
+            raise HTTPException(status_code=400, detail="Text too long (max 50000 chars)")
+
         entry = {
-            "speaker": body.get("speaker", "Unknown"),
-            "text": body.get("text", ""),
+            "speaker": speaker,
+            "text": text,
             "timestamp": body.get("timestamp", int(time.time())),
         }
         _transcript_entries.append(entry)
@@ -1289,9 +1314,11 @@ def create_api_router(ai_app: "StudioApp") -> APIRouter:
             query = body.get("query", "").strip()
             if not query:
                 raise HTTPException(status_code=400, detail="Query is required")
+            if len(query) > 5000:
+                raise HTTPException(status_code=400, detail="Query too long (max 5000 chars)")
 
             episode_id = body.get("episode_id")
-            limit = body.get("limit", 10)
+            limit = min(body.get("limit", 10), 100)  # Cap at 100 results
 
             results = _podcast_memory.search(query, episode_id=episode_id, limit=limit)
             return {"success": True, "results": results, "count": len(results)}

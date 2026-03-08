@@ -169,14 +169,44 @@ FastAPI Web Server              LiveKit Agent Worker
 ## Docker
 
 ```bash
-# Build and run
+# Build and run web server + agent worker (uses LiveKit Cloud)
 docker-compose up -d
 
 # View logs
 docker-compose logs -f
+
+# Stop
+docker-compose down
 ```
 
-The `docker-compose.yml` includes both the web server and agent worker.
+### Self-Hosted LiveKit Server
+
+Run everything locally including the LiveKit SFU -- no cloud account needed:
+
+```bash
+docker-compose -f docker-compose.self-hosted.yml up -d
+```
+
+This starts a LiveKit server at `ws://localhost:7880` with dev credentials, plus the web server and agent.
+
+### Docker Files
+
+| File | Purpose |
+|------|---------|
+| `Dockerfile` | Web server image |
+| `Dockerfile.agent` | Agent worker image |
+| `docker-compose.yml` | Web + Agent (requires LiveKit Cloud) |
+| `docker-compose.self-hosted.yml` | Web + Agent + LiveKit Server (fully local) |
+
+Volume mounts: `./data` (transcripts, ChromaDB, Mem0), `./uploads`, `./logs`
+
+## Security
+
+- **Control Room Auth**: Set `CONTROL_ROOM_PASSWORD` to require login for `/control` routes
+- **Rate Limiting**: API endpoints limited to 60 requests/minute per IP
+- **Input Validation**: All POST endpoints validate field presence, types, and length limits
+- **CORS**: Same-origin only in production; permissive in development
+- **XSS Prevention**: All user-generated content is HTML-escaped before display
 
 ## Testing
 

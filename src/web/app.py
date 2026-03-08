@@ -298,7 +298,7 @@ def create_web_app(ai_app: "StudioApp") -> FastAPI:
 
         result = {
             "status": "healthy",
-            "timestamp": _dt.datetime.utcnow().isoformat() + "Z",
+            "timestamp": _dt.datetime.now(_dt.timezone.utc).isoformat(),
             "version": "2.0.0",
             "checks": {},
         }

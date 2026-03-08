@@ -176,7 +176,7 @@ function addLocalVideoTile() {
     tile.id = "tile-local";
     tile.innerHTML =
         '<div id="media-local" class="w-full h-full min-h-[200px] rounded-xl overflow-hidden bg-studio-card"></div>' +
-        '<div class="participant-name">' + (room.localParticipant.name || "You") + '</div>';
+        '<div class="participant-name">' + escapeHtml(room.localParticipant.name || "You") + '</div>';
     grid.appendChild(tile);
 
     // Attach local video
@@ -201,8 +201,14 @@ function addParticipantTile(participant) {
     tile.id = "tile-" + participant.identity;
     tile.innerHTML =
         '<div id="media-' + participant.identity + '" class="w-full h-full min-h-[200px] rounded-xl overflow-hidden bg-studio-card"></div>' +
-        '<div class="participant-name">' + (participant.name || participant.identity) + '</div>';
+        '<div class="participant-name">' + escapeHtml(participant.name || participant.identity) + '</div>';
     grid.appendChild(tile);
+}
+
+function escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 function appendTranscript(speaker, text) {
@@ -213,7 +219,7 @@ function appendTranscript(speaker, text) {
 
     const entry = document.createElement("div");
     entry.className = "transcript-entry";
-    entry.innerHTML = '<span class="text-studio-accent-light font-medium text-xs">' + speaker + '</span><br/><span class="text-gray-300 text-sm leading-relaxed">' + text + '</span>';
+    entry.innerHTML = '<span class="text-studio-accent-light font-medium text-xs">' + escapeHtml(speaker) + '</span><br/><span class="text-gray-300 text-sm leading-relaxed">' + escapeHtml(text) + '</span>';
     box.appendChild(entry);
     box.scrollTop = box.scrollHeight;
 

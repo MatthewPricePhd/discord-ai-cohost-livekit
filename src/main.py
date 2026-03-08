@@ -94,12 +94,33 @@ class StudioApp:
             logger.error("Failed to start Studio", error=str(e))
             raise
 
+    async def cleanup_empty_rooms(self):
+        """Delete rooms that have been empty for longer than their timeout."""
+        try:
+            rooms = await self.room_manager.list_rooms()
+            for room in rooms:
+                if room.get("num_participants", 0) == 0:
+                    logger.info("Cleaning up empty room", room=room["name"])
+                    try:
+                        await self.room_manager.delete_room(room["name"])
+                    except Exception as e:
+                        logger.warning("Failed to delete empty room", room=room["name"], error=str(e))
+        except Exception as e:
+            logger.warning("Failed to list rooms for cleanup", error=str(e))
+
     async def shutdown(self):
-        """Shutdown gracefully."""
+        """Shutdown gracefully -- clean up rooms and disconnect."""
         if not self.running:
             return
         logger.info("Shutting down Studio")
         self.running = False
+
+        # Clean up empty rooms on shutdown
+        try:
+            await self.cleanup_empty_rooms()
+        except Exception as e:
+            logger.warning("Error cleaning up rooms during shutdown", error=str(e))
+
         if self.room_manager:
             await self.room_manager.close()
         if self.web_server:

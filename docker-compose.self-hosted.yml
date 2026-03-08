@@ -1,0 +1,92 @@
+version: '3.8'
+
+# Self-hosted LiveKit Server + Podcast Studio
+#
+# Usage:
+#   docker-compose -f docker-compose.self-hosted.yml up -d
+#
+# Requires .env with at minimum:
+#   OPENAI_API_KEY
+#   SECRET_KEY
+#
+# LiveKit credentials are auto-configured below.
+# Override LIVEKIT_URL in .env if you need a different address.
+
+services:
+  # LiveKit Server — self-hosted WebRTC SFU
+  livekit-server:
+    image: livekit/livekit-server:latest
+    container_name: podcast-studio-livekit
+    restart: unless-stopped
+    ports:
+      - "7880:7880"   # HTTP / WebSocket
+      - "7881:7881"   # RTC (TCP)
+      - "7882:7882/udp"  # RTC (UDP)
+    environment:
+      - LIVEKIT_KEYS=devkey: secret
+    command: >
+      --dev
+      --bind 0.0.0.0
+    networks:
+      - studio-network
+
+  # Web Server — FastAPI dashboard
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: podcast-studio-web
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-8000}:8000"
+    env_file:
+      - .env
+    environment:
+      - LIVEKIT_URL=${LIVEKIT_URL:-ws://livekit-server:7880}
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-devkey}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-secret}
+      - WEB_HOST=0.0.0.0
+      - WEB_PORT=8000
+      - UPLOAD_DIR=/app/uploads
+      - CHROMA_DB_PATH=/app/data/chroma
+      - PYTHONPATH=/app
+    volumes:
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    depends_on:
+      - livekit-server
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - studio-network
+
+  # Agent Worker — LiveKit AI co-host
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    container_name: podcast-studio-agent
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - LIVEKIT_URL=${LIVEKIT_URL:-ws://livekit-server:7880}
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-devkey}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-secret}
+      - PYTHONPATH=/app
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      web:
+        condition: service_healthy
+    networks:
+      - studio-network
+
+networks:
+  studio-network:
+    driver: bridge
