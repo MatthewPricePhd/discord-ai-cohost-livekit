@@ -261,6 +261,142 @@
             0% { background: rgba(34, 197, 94, 0.3); }
             100% { background: transparent; }
         }
+
+        /* ===== Collapsible panels ===== */
+        .panel-toggle {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            background: none;
+            border: none;
+            color: inherit;
+            cursor: pointer;
+            padding: 0;
+        }
+        .panel-toggle .chevron {
+            transition: transform 0.2s ease;
+            flex-shrink: 0;
+        }
+        .panel-toggle.collapsed .chevron {
+            transform: rotate(-90deg);
+        }
+        .panel-body {
+            overflow: hidden;
+            transition: max-height 0.25s ease, opacity 0.2s ease;
+            max-height: 2000px;
+            opacity: 1;
+        }
+        .panel-body.collapsed {
+            max-height: 0;
+            opacity: 0;
+        }
+
+        /* ===== Mobile responsive (< 768px) ===== */
+        @media (max-width: 767px) {
+            /* Stack columns vertically */
+            .control-columns {
+                grid-template-columns: 1fr;
+                overflow-y: auto;
+                height: auto;
+            }
+
+            /* Let main scroll instead of being fixed height */
+            main.flex-1 {
+                overflow: visible;
+                min-height: auto;
+                flex: 1 1 auto;
+            }
+            body {
+                overflow-y: auto;
+                overflow-x: hidden;
+            }
+
+            /* Each column becomes scrollable section */
+            .control-columns > div {
+                overflow-y: visible;
+                max-height: none;
+                padding-right: 0;
+                padding-left: 0;
+            }
+
+            /* Show collapsible panel toggles on mobile */
+            .panel-toggle {
+                display: flex;
+            }
+
+            /* Touch-friendly buttons: min 44px tap targets */
+            .ctrl-btn {
+                min-height: 44px;
+                padding: 10px 14px;
+                font-size: 0.8rem;
+            }
+            .mode-btn {
+                min-height: 44px;
+                padding: 10px 6px;
+                font-size: 0.72rem;
+            }
+            .ctrl-input,
+            .ctrl-textarea,
+            .ctrl-select {
+                min-height: 44px;
+                padding: 10px 12px;
+                font-size: 0.85rem;
+            }
+
+            /* Transcript panel: fixed height so it scrolls on mobile */
+            #transcript-box {
+                max-height: 50vh;
+                overflow-y: auto;
+            }
+
+            /* Insights list: scrollable with cap */
+            #insights-list {
+                max-height: 40vh;
+                overflow-y: auto;
+            }
+
+            /* Header: wrap items to avoid overflow */
+            header {
+                flex-wrap: wrap;
+                gap: 8px;
+                padding: 8px 12px;
+            }
+            header > div {
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+
+            /* Mini preview: reduce height on small screens */
+            .mini-preview {
+                aspect-ratio: 16/4;
+            }
+
+            /* Content output: smaller max height */
+            #content-output {
+                max-height: 40vh;
+            }
+
+            /* Memory results / episode list: taller on mobile for usability */
+            #memory-results,
+            #episode-list {
+                max-height: 50vh;
+            }
+
+            /* Export button in transcript header: ensure tappable */
+            .glass-card .ctrl-btn[style*="padding: 4px"] {
+                min-height: 36px;
+                padding: 6px 10px !important;
+            }
+        }
+
+        /* ===== Tablet breakpoint (768px - 1024px) ===== */
+        @media (min-width: 768px) and (max-width: 1024px) {
+            .control-columns {
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: auto auto;
+            }
+        }
     </style>
 </head>
 <body class="bg-studio-bg text-white min-h-screen flex flex-col overflow-hidden">
@@ -659,5 +795,45 @@
         const ROOM_NAME = "{{ room_name }}";
     </script>
     <script src="/static/js/control.js"></script>
+    <script>
+        // Collapsible panels for mobile
+        (function() {
+            if (window.innerWidth >= 768) return;
+
+            document.querySelectorAll('.glass-card').forEach(function(card) {
+                // Find the panel heading row (first child div with section title)
+                var heading = card.querySelector(':scope > div:first-child, :scope > .flex:first-child');
+                if (!heading || heading.id === 'transcript-box') return;
+
+                // Determine the panel body: everything after the heading
+                var bodyElements = [];
+                var sibling = heading.nextElementSibling;
+                while (sibling) {
+                    bodyElements.push(sibling);
+                    sibling = sibling.nextElementSibling;
+                }
+                if (bodyElements.length === 0) return;
+
+                // Wrap body elements in a collapsible container
+                var wrapper = document.createElement('div');
+                wrapper.className = 'panel-body';
+                bodyElements.forEach(function(el) { wrapper.appendChild(el); });
+                card.appendChild(wrapper);
+
+                // Convert heading to a toggle button
+                var toggle = document.createElement('button');
+                toggle.className = 'panel-toggle';
+                toggle.type = 'button';
+                toggle.innerHTML = heading.innerHTML +
+                    '<svg class="chevron w-4 h-4 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6,9 12,15 18,9"/></svg>';
+                heading.replaceWith(toggle);
+
+                toggle.addEventListener('click', function() {
+                    toggle.classList.toggle('collapsed');
+                    wrapper.classList.toggle('collapsed');
+                });
+            });
+        })();
+    </script>
 </body>
 </html>
