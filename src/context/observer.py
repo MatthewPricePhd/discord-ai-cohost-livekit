@@ -4,6 +4,9 @@ Observer Agent for passive background conversation analysis.
 Runs as a background asyncio task during podcast sessions, analyzing
 conversation turns and generating insights for the dashboard without
 interrupting the live conversation.
+
+Updated for Phase 3: works with the new StudioApp and can broadcast
+insights back to Control Room via LiveKit data messages.
 """
 import asyncio
 import json
@@ -17,7 +20,7 @@ from ..config import get_logger, settings
 
 logger = get_logger(__name__)
 
-OBSERVER_MODEL = "gpt-5.3-instant"
+OBSERVER_MODEL = "gpt-4o-mini"
 
 
 class ObserverAgent:
@@ -25,6 +28,9 @@ class ObserverAgent:
     Background observer that analyzes conversation in real-time and
     generates structured insights (talking points, fact checks, relevant
     docs, conversation direction) surfaced only via the web dashboard.
+
+    Can optionally receive a ``broadcast_fn`` callable that sends insight
+    data messages to the LiveKit room (e.g. via the agent worker).
     """
 
     def __init__(
@@ -32,11 +38,13 @@ class ObserverAgent:
         openai_client: Optional[AsyncOpenAI] = None,
         context_manager=None,
         analysis_frequency: int = 3,
+        broadcast_fn=None,
     ):
         self._openai: Optional[AsyncOpenAI] = openai_client
         self._context_manager = context_manager
         self.analysis_frequency = analysis_frequency
         self.enabled = True
+        self._broadcast_fn = broadcast_fn
 
         # Conversation buffer
         self._turns: deque = deque(maxlen=100)
@@ -192,6 +200,13 @@ class ObserverAgent:
             fact_checks=len(insight["fact_checks"]),
             docs=len(insight["relevant_docs"]),
         )
+
+        # Broadcast to Control Room if a broadcast function was provided
+        if self._broadcast_fn:
+            try:
+                self._broadcast_fn(insight)
+            except Exception as e:
+                logger.warning("Failed to broadcast insight", error=str(e))
 
     async def _llm_analyze(self, conversation_text: str) -> Dict[str, Any]:
         client = self._get_client()

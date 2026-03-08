@@ -6,6 +6,7 @@ Supports three modes controlled via data messages from the Control Room:
   - ask-chatgpt: AI receives text, responds via GPT-5.4 text completion
 """
 import json
+import time
 
 from livekit import agents, rtc
 from livekit.agents import AgentServer, AgentSession, room_io
@@ -13,6 +14,8 @@ from livekit.plugins import openai, silero, noise_cancellation
 
 from .cohost import PodcastCoHost
 from ..config import get_logger
+from ..memory import PodcastMemory
+from ..archive import TranscriptStore
 
 logger = get_logger(__name__)
 
@@ -21,10 +24,27 @@ server = AgentServer()
 # Track per-room mode state
 _room_modes: dict[str, str] = {}
 
+# Shared singletons (initialised once, reused across sessions)
+_podcast_memory: PodcastMemory | None = None
+_transcript_store: TranscriptStore | None = None
+
+
+def _get_memory() -> PodcastMemory:
+    global _podcast_memory
+    if _podcast_memory is None:
+        _podcast_memory = PodcastMemory()
+    return _podcast_memory
+
+
+def _get_store() -> TranscriptStore:
+    global _transcript_store
+    if _transcript_store is None:
+        _transcript_store = TranscriptStore()
+    return _transcript_store
+
 
 def _broadcast_transcript(room: rtc.Room, speaker: str, text: str, timestamp: int | None = None):
     """Broadcast a transcript entry to all participants via data message."""
-    import time
     payload = json.dumps({
         "type": "transcript",
         "speaker": speaker,
@@ -68,6 +88,28 @@ async def entrypoint(ctx: agents.JobContext):
     current_mode = "speech-to-speech"
     _room_modes[ctx.room.name] = current_mode
 
+    # --- Memory & archive setup ---
+    memory = _get_memory()
+    store = _get_store()
+
+    # Create an episode for this session
+    episode_id = store.create_episode(
+        title=f"Session: {ctx.room.name}",
+        guests=[],
+    )
+    logger.info("Episode created for session", episode_id=episode_id, room=ctx.room.name)
+
+    # Load memory context for the AI system prompt
+    memory_context = memory.get_context_for_prompt(
+        query="podcast conversation context",
+        max_results=5,
+    )
+
+    # Build enriched instructions for the co-host
+    cohost = PodcastCoHost()
+    if memory_context:
+        cohost.instructions = cohost.instructions + "\n\n" + memory_context
+
     session = AgentSession(
         llm=openai.realtime.RealtimeModel(
             voice="coral",
@@ -87,6 +129,8 @@ async def entrypoint(ctx: agents.JobContext):
         if event.is_final:
             logger.info("User said", transcript=event.transcript)
             _broadcast_transcript(ctx.room, "User", event.transcript)
+            # Archive transcript entry
+            store.add_entry(episode_id, "User", event.transcript)
 
     @session.on("agent_state_changed")
     def on_agent_state(state):
@@ -118,16 +162,30 @@ async def entrypoint(ctx: agents.JobContext):
             elif msg_type == "force-response":
                 if not is_passive:
                     import asyncio
+                    # Inject memory context for richer responses
+                    recent_entries = store.get_episode(episode_id)
+                    context_hint = ""
+                    if recent_entries and recent_entries.get("entries"):
+                        last_texts = [e["text"] for e in recent_entries["entries"][-5:]]
+                        query = " ".join(last_texts)
+                        context_hint = memory.get_context_for_prompt(query, max_results=3)
+
+                    instructions = "Respond to the conversation with a relevant insight or question."
+                    if context_hint:
+                        instructions += "\n\n" + context_hint
+
                     asyncio.get_event_loop().create_task(
-                        session.generate_reply(
-                            instructions="Respond to the conversation with a relevant insight or question."
-                        )
+                        session.generate_reply(instructions=instructions)
                     )
 
             elif msg_type == "ask-ai":
                 if not is_passive:
                     import asyncio
                     message = msg.get("message", "Please respond to the conversation.")
+                    # Enrich with memory
+                    mem_context = memory.get_context_for_prompt(message, max_results=3)
+                    if mem_context:
+                        message += "\n\n" + mem_context
                     asyncio.get_event_loop().create_task(
                         session.generate_reply(instructions=message)
                     )
@@ -135,16 +193,14 @@ async def entrypoint(ctx: agents.JobContext):
             elif msg_type == "set-voice":
                 voice = msg.get("voice", "coral")
                 logger.info("Voice change requested", voice=voice)
-                # Voice changes require a new session — log for now
 
             elif msg_type == "set-system-prompt":
                 prompt = msg.get("prompt", "")
                 logger.info("System prompt update requested", prompt_length=len(prompt))
-                # System prompt changes would need session reconfiguration
 
     await session.start(
         room=ctx.room,
-        agent=PodcastCoHost(),
+        agent=cohost,
         room_options=room_io.RoomOptions(
             audio_input=room_io.AudioInputOptions(
                 noise_cancellation=noise_cancellation.BVC(),
@@ -157,4 +213,23 @@ async def entrypoint(ctx: agents.JobContext):
         instructions="Briefly introduce yourself as the AI co-host. Say you're here to help with the podcast and you're ready when they are. Keep it to one sentence."
     )
 
-    logger.info("Agent session started", room_name=ctx.room.name)
+    logger.info("Agent session started", room_name=ctx.room.name, episode_id=episode_id)
+
+    # When the session ends, create a memory summary from the episode transcript
+    @ctx.room.on("disconnected")
+    def on_room_disconnect():
+        try:
+            episode = store.get_episode(episode_id)
+            if episode and episode.get("entries"):
+                transcript_text = "\n".join(
+                    f"{e['speaker']}: {e['text']}" for e in episode["entries"]
+                )
+                if len(transcript_text) > 50:
+                    memory.add_episode_memory(
+                        episode_id=episode_id,
+                        transcript_text=transcript_text,
+                        metadata={"room": ctx.room.name, "title": episode["title"]},
+                    )
+                    logger.info("Episode memory summary created", episode_id=episode_id)
+        except Exception as exc:
+            logger.error("Failed to create episode memory summary", error=str(exc))

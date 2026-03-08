@@ -5,6 +5,8 @@ import sys
 
 from .config import setup_logging, get_logger, settings
 from .rooms import RoomManager
+from .memory import PodcastMemory
+from .archive import TranscriptStore
 
 logger = get_logger(__name__)
 
@@ -22,6 +24,9 @@ class StudioApp:
         self.running = False
         self.current_mode = "passive"
         self.session_start_time = None
+        # Phase 3: Memory & Archive
+        self.memory = PodcastMemory()
+        self.transcript_store = TranscriptStore()
         # Placeholders for features that reference the old app structure
         self.openai_client = None
         self.observer_agent = None
