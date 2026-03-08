@@ -1,5 +1,5 @@
 """
-FastAPI web application for Discord AI Co-Host Bot
+FastAPI web application for LiveKit Podcast Studio
 """
 from pathlib import Path
 from typing import Optional, TYPE_CHECKING
@@ -13,7 +13,7 @@ from .routes import create_api_router
 from ..config import get_logger, settings
 
 if TYPE_CHECKING:
-    from ..main import AICoHostApp
+    from ..main import StudioApp
 
 logger = get_logger(__name__)
 
@@ -21,13 +21,13 @@ logger = get_logger(__name__)
 class WebApp:
     """Web application wrapper"""
 
-    def __init__(self, ai_app: "AICoHostApp"):
+    def __init__(self, ai_app: "StudioApp"):
         self.ai_app = ai_app
         self.app = create_web_app(ai_app)
         self.app.state.studio_app = ai_app
 
 
-def create_web_app(ai_app: "AICoHostApp") -> FastAPI:
+def create_web_app(ai_app: "StudioApp") -> FastAPI:
     """Create and configure FastAPI application"""
     
     app = FastAPI(
@@ -96,6 +96,36 @@ def create_web_app(ai_app: "AICoHostApp") -> FastAPI:
             })
         except Exception as e:
             logger.error("Error rendering studio create page", error=str(e))
+            raise HTTPException(status_code=500, detail="Internal server error")
+
+    # Control Room route
+    @app.get("/control", response_class=HTMLResponse)
+    async def control_room(request: Request, token: str):
+        """Control Room view — producer dashboard with a token."""
+        try:
+            # Decode room name from the token for display purposes
+            room_name = ""
+            try:
+                import base64
+                import json as _json
+                # JWT payload is the second segment
+                parts = token.split(".")
+                if len(parts) >= 2:
+                    padded = parts[1] + "=" * (4 - len(parts[1]) % 4)
+                    payload = _json.loads(base64.urlsafe_b64decode(padded))
+                    video = payload.get("video", {})
+                    room_name = video.get("room", "")
+            except Exception:
+                pass
+
+            return templates.TemplateResponse("control.html", {
+                "request": request,
+                "livekit_url": settings.livekit_url,
+                "token": token,
+                "room_name": room_name,
+            })
+        except Exception as e:
+            logger.error("Error rendering control room", error=str(e))
             raise HTTPException(status_code=500, detail="Internal server error")
 
     # Health page route
