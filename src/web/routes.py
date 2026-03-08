@@ -3,13 +3,14 @@ API routes for Discord AI Co-Host Bot web interface
 """
 from typing import Dict, Any, List, Optional, TYPE_CHECKING
 
+import json
 import os
 import time
 from datetime import datetime
 from pathlib import Path
 import httpx
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, Request, UploadFile, File, Form
 from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel
 
@@ -1085,5 +1086,64 @@ def create_api_router(ai_app: "AICoHostApp") -> APIRouter:
         except Exception as e:
             logger.error("Error configuring observer", error=str(e))
             raise HTTPException(status_code=500, detail=str(e))
+
+    # --- Room Management Endpoints ---
+
+    @router.post("/rooms/create")
+    async def create_room(request: Request):
+        """Create a new podcast room."""
+        body = await request.json()
+        title = body.get("title", "Podcast Session")
+
+        app = request.app.state.studio_app
+        room_name = app.room_manager.generate_room_name(title)
+        room_info = await app.room_manager.create_room(room_name, metadata=json.dumps({"title": title}))
+
+        # Generate producer token for the host
+        host_token = app.room_manager.create_token(
+            room_name=room_name,
+            participant_name="Host",
+            identity="host",
+            role="producer",
+        )
+
+        return {
+            "success": True,
+            "room": room_info,
+            "host_token": host_token,
+            "livekit_url": settings.livekit_url,
+        }
+
+    @router.get("/rooms")
+    async def list_rooms(request: Request):
+        """List active rooms."""
+        app = request.app.state.studio_app
+        rooms = await app.room_manager.list_rooms()
+        return {"success": True, "rooms": rooms}
+
+    @router.delete("/rooms/{room_name}")
+    async def delete_room(request: Request, room_name: str):
+        """Delete a room."""
+        app = request.app.state.studio_app
+        await app.room_manager.delete_room(room_name)
+        return {"success": True}
+
+    @router.post("/rooms/{room_name}/invite")
+    async def create_invite(request: Request, room_name: str):
+        """Generate an invite link for a guest."""
+        body = await request.json()
+        participant_name = body.get("name", "Guest")
+        role = body.get("role", "guest")
+
+        app = request.app.state.studio_app
+        base_url = str(request.base_url).rstrip("/")
+        link = app.room_manager.create_invite_link(
+            room_name=room_name,
+            participant_name=participant_name,
+            role=role,
+            base_url=base_url,
+        )
+
+        return {"success": True, "invite_link": link}
 
     return router

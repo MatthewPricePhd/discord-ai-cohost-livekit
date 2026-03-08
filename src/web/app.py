@@ -20,10 +20,11 @@ logger = get_logger(__name__)
 
 class WebApp:
     """Web application wrapper"""
-    
+
     def __init__(self, ai_app: "AICoHostApp"):
         self.ai_app = ai_app
         self.app = create_web_app(ai_app)
+        self.app.state.studio_app = ai_app
 
 
 def create_web_app(ai_app: "AICoHostApp") -> FastAPI:
