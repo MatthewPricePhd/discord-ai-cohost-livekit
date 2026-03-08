@@ -17,7 +17,7 @@ from pydantic import BaseModel
 from ..config import get_logger, settings
 
 if TYPE_CHECKING:
-    from ..main import AICoHostApp
+    from ..main import StudioApp
 
 logger = get_logger(__name__)
 
@@ -66,7 +66,7 @@ class ObserverConfigureRequest(BaseModel):
     enabled: Optional[bool] = None
 
 
-def create_api_router(ai_app: "AICoHostApp") -> APIRouter:
+def create_api_router(ai_app: "StudioApp") -> APIRouter:
     """Create API router with all endpoints"""
     
     router = APIRouter()
@@ -1145,5 +1145,81 @@ def create_api_router(ai_app: "AICoHostApp") -> APIRouter:
         )
 
         return {"success": True, "invite_link": link}
+
+    # ------------------------------------------------------------------
+    # Participant management endpoints
+    # ------------------------------------------------------------------
+
+    @router.post("/rooms/{room_name}/participants/{identity}/mute")
+    async def mute_participant(request: Request, room_name: str, identity: str):
+        """Mute a participant's audio track."""
+        try:
+            app = request.app.state.studio_app
+            lk_api = app.room_manager._get_api()
+            from livekit import api as lk_api_mod
+            await lk_api.room.mute_published_track(
+                lk_api_mod.MuteRoomTrackRequest(
+                    room=room_name,
+                    identity=identity,
+                    track_sid="",  # empty = mute all
+                    muted=True,
+                )
+            )
+            return {"success": True, "message": f"Muted {identity}"}
+        except Exception as e:
+            logger.error("Error muting participant", identity=identity, error=str(e))
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @router.delete("/rooms/{room_name}/participants/{identity}")
+    async def remove_participant(request: Request, room_name: str, identity: str):
+        """Remove a participant from the room."""
+        try:
+            app = request.app.state.studio_app
+            lk_api = app.room_manager._get_api()
+            from livekit import api as lk_api_mod
+            await lk_api.room.remove_participant(
+                lk_api_mod.RoomParticipantIdentity(
+                    room=room_name,
+                    identity=identity,
+                )
+            )
+            return {"success": True, "message": f"Removed {identity}"}
+        except Exception as e:
+            logger.error("Error removing participant", identity=identity, error=str(e))
+            raise HTTPException(status_code=500, detail=str(e))
+
+    # ------------------------------------------------------------------
+    # Transcript archive endpoints
+    # ------------------------------------------------------------------
+
+    # In-memory transcript store (v1 — upgrade to SQLite in Phase 3)
+    _transcript_entries: list = []
+
+    @router.post("/transcript/add")
+    async def add_transcript_entry(request: Request):
+        """Store a transcript entry for later export."""
+        body = await request.json()
+        entry = {
+            "speaker": body.get("speaker", "Unknown"),
+            "text": body.get("text", ""),
+            "timestamp": body.get("timestamp", int(time.time())),
+        }
+        _transcript_entries.append(entry)
+        return {"success": True, "count": len(_transcript_entries)}
+
+    @router.get("/transcript")
+    async def get_transcript():
+        """Get all stored transcript entries."""
+        return {
+            "success": True,
+            "entries": _transcript_entries,
+            "count": len(_transcript_entries),
+        }
+
+    @router.delete("/transcript")
+    async def clear_transcript():
+        """Clear stored transcript entries."""
+        _transcript_entries.clear()
+        return {"success": True, "message": "Transcript cleared"}
 
     return router
