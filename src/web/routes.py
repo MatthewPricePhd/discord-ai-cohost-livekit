@@ -1222,4 +1222,110 @@ def create_api_router(ai_app: "StudioApp") -> APIRouter:
         _transcript_entries.clear()
         return {"success": True, "message": "Transcript cleared"}
 
+    # ------------------------------------------------------------------
+    # Phase 3: Episode History + Memory Search + Document Upload
+    # ------------------------------------------------------------------
+
+    from ..archive import TranscriptStore
+    from ..memory import PodcastMemory
+    from ..documents.uploader import DocumentUploader
+
+    _archive_store = TranscriptStore()
+    _podcast_memory = PodcastMemory()
+    _doc_uploader = DocumentUploader()
+
+    @router.get("/episodes")
+    async def list_episodes():
+        """List all past episodes with entry counts."""
+        try:
+            episodes = _archive_store.list_episodes()
+            return {"success": True, "episodes": episodes, "count": len(episodes)}
+        except Exception as e:
+            logger.error("Error listing episodes", error=str(e))
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @router.get("/episodes/{episode_id}")
+    async def get_episode(episode_id: str):
+        """Get full episode transcript."""
+        try:
+            episode = _archive_store.get_episode(episode_id)
+            if not episode:
+                raise HTTPException(status_code=404, detail="Episode not found")
+            return {"success": True, "episode": episode}
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error("Error getting episode", episode_id=episode_id, error=str(e))
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @router.get("/episodes/{episode_id}/export")
+    async def export_episode(episode_id: str, fmt: str = "markdown"):
+        """Export episode transcript as markdown or JSON."""
+        try:
+            if fmt == "json":
+                content = _archive_store.export_json(episode_id)
+            else:
+                content = _archive_store.export_markdown(episode_id)
+
+            if content is None:
+                raise HTTPException(status_code=404, detail="Episode not found")
+
+            return {
+                "success": True,
+                "format": fmt,
+                "content": content,
+            }
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error("Error exporting episode", episode_id=episode_id, error=str(e))
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @router.post("/memory/search")
+    async def search_memory(request: Request):
+        """Search across all episode memories."""
+        try:
+            body = await request.json()
+            query = body.get("query", "").strip()
+            if not query:
+                raise HTTPException(status_code=400, detail="Query is required")
+
+            episode_id = body.get("episode_id")
+            limit = body.get("limit", 10)
+
+            results = _podcast_memory.search(query, episode_id=episode_id, limit=limit)
+            return {"success": True, "results": results, "count": len(results)}
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error("Error searching memory", error=str(e))
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @router.post("/documents/upload/full")
+    async def upload_document_full(
+        file: UploadFile = File(...),
+        title: Optional[str] = Form(None),
+    ):
+        """Upload a document, process it, and store vectors for RAG."""
+        try:
+            result = await _doc_uploader.upload_document(file, title=title)
+            if not result.get("success"):
+                raise HTTPException(status_code=400, detail=result.get("error", "Upload failed"))
+            return result
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error("Error in full document upload", error=str(e))
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @router.get("/documents/list")
+    async def list_uploaded_documents():
+        """List all uploaded and processed documents."""
+        try:
+            docs = _doc_uploader.list_documents()
+            return {"success": True, "documents": docs, "count": len(docs)}
+        except Exception as e:
+            logger.error("Error listing documents", error=str(e))
+            raise HTTPException(status_code=500, detail=str(e))
+
     return router

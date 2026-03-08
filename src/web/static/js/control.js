@@ -649,6 +649,92 @@ async function checkActiveSession() {
     } catch (_) {}
 }
 
+// ── Memory Search ─────────────────────────────────────────────────
+
+async function searchMemory() {
+    const query = document.getElementById("memory-query").value.trim();
+    if (!query) return;
+
+    const container = document.getElementById("memory-results");
+    container.innerHTML = '<p class="text-gray-500 text-[11px] text-center py-2"><span class="spinner"></span> Searching...</p>';
+
+    try {
+        const res = await fetch("/api/memory/search", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: query, limit: 10 }),
+        });
+        const data = await res.json();
+
+        if (!data.results || data.results.length === 0) {
+            container.innerHTML = '<p class="text-gray-600 text-[11px] italic text-center py-2">No memories found</p>';
+            return;
+        }
+
+        container.innerHTML = data.results.map(function(mem) {
+            const text = mem.memory || mem.text || "";
+            const epId = (mem.metadata || {}).episode_id || "?";
+            return '<div class="py-1 border-b border-studio-border/50">' +
+                '<span class="text-[9px] text-violet-400 font-mono">ep:' + escapeHtml(epId.slice(0, 8)) + '</span> ' +
+                '<span class="text-[11px] text-gray-300">' + escapeHtml(text) + '</span>' +
+                '</div>';
+        }).join("");
+    } catch (_) {
+        container.innerHTML = '<p class="text-red-400 text-[11px] text-center py-2">Search failed</p>';
+    }
+}
+
+// Allow Enter key in memory search
+document.getElementById("memory-query")?.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") searchMemory();
+});
+
+// ── Episode History ───────────────────────────────────────────────
+
+async function loadEpisodes() {
+    const container = document.getElementById("episode-list");
+    try {
+        const res = await fetch("/api/episodes");
+        const data = await res.json();
+
+        if (!data.episodes || data.episodes.length === 0) {
+            container.innerHTML = '<p class="text-gray-600 text-[11px] italic text-center py-2">No episodes yet</p>';
+            return;
+        }
+
+        container.innerHTML = data.episodes.map(function(ep) {
+            const dateStr = ep.date ? ep.date.split("T")[0] : "";
+            return '<div class="flex items-center justify-between py-1 border-b border-studio-border/50">' +
+                '<div class="flex-1 min-w-0">' +
+                '<div class="text-[11px] text-gray-300 truncate">' + escapeHtml(ep.title) + '</div>' +
+                '<div class="text-[9px] text-gray-500 font-mono">' + dateStr + ' &middot; ' + (ep.entry_count || 0) + ' entries</div>' +
+                '</div>' +
+                '<button onclick="exportEpisode(\'' + ep.id + '\')" class="ctrl-btn btn-surface flex-shrink-0" style="padding:2px 6px;font-size:9px;" title="Export">' +
+                '<svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>' +
+                '</button>' +
+                '</div>';
+        }).join("");
+    } catch (_) {
+        container.innerHTML = '<p class="text-red-400 text-[11px] text-center py-2">Failed to load episodes</p>';
+    }
+}
+
+async function exportEpisode(episodeId) {
+    try {
+        const res = await fetch("/api/episodes/" + encodeURIComponent(episodeId) + "/export?fmt=markdown");
+        const data = await res.json();
+        if (data.success && data.content) {
+            const blob = new Blob([data.content], { type: "text/markdown" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "episode_" + episodeId.slice(0, 8) + ".md";
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    } catch (_) {}
+}
+
 // ── Initialize ────────────────────────────────────────────────────
 
 (async function init() {
@@ -663,4 +749,5 @@ async function checkActiveSession() {
     loadProviderConfig();
     loadVoices();
     checkActiveSession();
+    loadEpisodes();
 })();
