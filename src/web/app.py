@@ -173,12 +173,17 @@ def create_web_app(ai_app: "StudioApp") -> FastAPI:
             }
     
     # Error handlers
+    from fastapi.responses import JSONResponse as _JSONResponse
+
     @app.exception_handler(404)
     async def not_found_handler(request: Request, exc: HTTPException):
         """Handle 404 errors"""
         if request.url.path.startswith("/api/"):
-            return {"error": "Not found", "status_code": 404}
-        
+            return _JSONResponse(
+                content={"error": "Not found", "status_code": 404},
+                status_code=404,
+            )
+
         try:
             return templates.TemplateResponse("404.html", {
                 "request": request,
@@ -186,15 +191,18 @@ def create_web_app(ai_app: "StudioApp") -> FastAPI:
             }, status_code=404)
         except:
             return HTMLResponse(content="<h1>404 - Not Found</h1>", status_code=404)
-    
+
     @app.exception_handler(500)
     async def internal_error_handler(request: Request, exc: Exception):
         """Handle 500 errors"""
         logger.error("Internal server error", error=str(exc), path=request.url.path)
-        
+
         if request.url.path.startswith("/api/"):
-            return {"error": "Internal server error", "status_code": 500}
-        
+            return _JSONResponse(
+                content={"error": "Internal server error", "status_code": 500},
+                status_code=500,
+            )
+
         try:
             return templates.TemplateResponse("500.html", {
                 "request": request,

@@ -134,37 +134,61 @@
             }
         }
 
-        /* Audio visualizer bars for AI */
+        /* Audio visualizer bars for AI — real waveform driven by Web Audio API */
         .audio-bars {
             display: flex;
-            align-items: center;
-            gap: 3px;
-            height: 24px;
+            align-items: flex-end;
+            gap: 2px;
+            height: 32px;
             margin-top: 12px;
             position: relative;
             z-index: 1;
         }
         .audio-bar {
-            width: 4px;
-            height: 4px;
-            background: rgba(255, 255, 255, 0.5);
+            width: 3px;
+            min-height: 3px;
+            background: rgba(255, 255, 255, 0.4);
             border-radius: 2px;
-            transition: height 0.15s ease;
+            transition: height 0.06s ease-out;
         }
         .ai-speaking .audio-bar {
-            animation: bar-dance 0.8s ease-in-out infinite;
-            background: rgba(255, 255, 255, 0.8);
+            background: rgba(255, 255, 255, 0.85);
         }
-        .ai-speaking .audio-bar:nth-child(1) { animation-delay: 0s; }
-        .ai-speaking .audio-bar:nth-child(2) { animation-delay: 0.1s; }
-        .ai-speaking .audio-bar:nth-child(3) { animation-delay: 0.2s; }
-        .ai-speaking .audio-bar:nth-child(4) { animation-delay: 0.15s; }
-        .ai-speaking .audio-bar:nth-child(5) { animation-delay: 0.05s; }
 
-        @keyframes bar-dance {
-            0%, 100% { height: 4px; }
-            50% { height: 20px; }
+        /* Participant tile transitions */
+        .participant-tile {
+            animation: tile-enter 0.4s ease-out;
         }
+        .participant-tile.leaving {
+            animation: tile-leave 0.3s ease-in forwards;
+        }
+        @keyframes tile-enter {
+            from { opacity: 0; transform: scale(0.92); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes tile-leave {
+            from { opacity: 1; transform: scale(1); }
+            to { opacity: 0; transform: scale(0.92); }
+        }
+
+        /* Connection quality indicator */
+        .conn-quality {
+            position: absolute;
+            top: 10px;
+            right: 12px;
+            display: flex;
+            align-items: flex-end;
+            gap: 1.5px;
+            z-index: 2;
+        }
+        .conn-bar {
+            width: 3px;
+            border-radius: 1px;
+            background: rgba(255,255,255,0.3);
+        }
+        .conn-bar.active { background: #4ade80; }
+        .conn-bar.warn { background: #facc15; }
+        .conn-bar.poor { background: #f87171; }
 
         /* Live indicator */
         .live-dot {
@@ -284,6 +308,10 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
                 <span>Cam</span>
             </button>
+            <button id="btn-screen" onclick="toggleScreenShare()" class="studio-btn btn-surface">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                <span>Screen</span>
+            </button>
             <div class="w-px h-6 bg-studio-border mx-1"></div>
             <button id="btn-ask-ai" onclick="askAI()" class="studio-btn btn-accent">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1.27A7 7 0 0 1 14 22h-4a7 7 0 0 1-6.73-3H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/></svg>
@@ -310,7 +338,18 @@
                                 <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1.27A7 7 0 0 1 14 22h-4a7 7 0 0 1-6.73-3H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/>
                             </svg>
                         </div>
-                        <div class="audio-bars">
+                        <div class="audio-bars" id="ai-audio-bars">
+                            <div class="audio-bar"></div>
+                            <div class="audio-bar"></div>
+                            <div class="audio-bar"></div>
+                            <div class="audio-bar"></div>
+                            <div class="audio-bar"></div>
+                            <div class="audio-bar"></div>
+                            <div class="audio-bar"></div>
+                            <div class="audio-bar"></div>
+                            <div class="audio-bar"></div>
+                            <div class="audio-bar"></div>
+                            <div class="audio-bar"></div>
                             <div class="audio-bar"></div>
                             <div class="audio-bar"></div>
                             <div class="audio-bar"></div>

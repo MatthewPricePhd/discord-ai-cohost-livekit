@@ -1,12 +1,18 @@
 /**
  * Studio View — LiveKit room connection and media management.
  */
-const { Room, RoomEvent, Track, VideoPresets, ConnectionState } = LivekitClient;
+const { Room, RoomEvent, Track, VideoPresets, ConnectionState, ConnectionQuality } = LivekitClient;
 
 let room = null;
 let micEnabled = true;
 let camEnabled = true;
+let screenShareEnabled = false;
 let transcriptCount = 0;
+
+// Audio visualizer state
+let aiAudioContext = null;
+let aiAnalyser = null;
+let aiVisualizerRAF = null;
 
 // ── Connect to LiveKit room ──────────────────────────────────────
 
@@ -27,6 +33,7 @@ async function connectToRoom() {
     room.on(RoomEvent.DataReceived, onDataReceived);
     room.on(RoomEvent.TranscriptionReceived, onTranscriptionReceived);
     room.on(RoomEvent.ActiveSpeakersChanged, onActiveSpeakersChanged);
+    room.on(RoomEvent.ConnectionQualityChanged, onConnectionQualityChanged);
 
     try {
         await room.connect(LIVEKIT_URL, TOKEN);
@@ -63,8 +70,15 @@ function onParticipantConnected(participant) {
 
 function onParticipantDisconnected(participant) {
     const tile = document.getElementById("tile-" + participant.identity);
-    if (tile) tile.remove();
-    updateGridLayout();
+    if (tile) {
+        tile.classList.add("leaving");
+        setTimeout(function() {
+            tile.remove();
+            updateGridLayout();
+        }, 300);
+    } else {
+        updateGridLayout();
+    }
 }
 
 function onTrackSubscribed(track, publication, participant) {
@@ -73,6 +87,8 @@ function onTrackSubscribed(track, publication, participant) {
         if (track.kind === Track.Kind.Audio) {
             const el = track.attach();
             document.getElementById("ai-tile").appendChild(el);
+            // Set up real audio visualizer using Web Audio API
+            setupAIAudioVisualizer(el);
         }
         return;
     }
@@ -265,8 +281,113 @@ async function sendChat() {
 }
 
 function leaveRoom() {
+    if (aiVisualizerRAF) cancelAnimationFrame(aiVisualizerRAF);
     if (room) room.disconnect();
     window.location.href = "/";
+}
+
+// ── Screen sharing ──────────────────────────────────────────────
+
+async function toggleScreenShare() {
+    if (!room) return;
+    screenShareEnabled = !screenShareEnabled;
+    const btn = document.getElementById("btn-screen");
+    const label = btn.querySelector("span");
+
+    try {
+        await room.localParticipant.setScreenShareEnabled(screenShareEnabled);
+        if (screenShareEnabled) {
+            btn.classList.remove("btn-surface");
+            btn.classList.add("active", "btn-surface");
+            btn.style.background = "rgba(99,102,241,0.15)";
+            btn.style.borderColor = "rgba(99,102,241,0.4)";
+            label.textContent = "Stop Share";
+        } else {
+            btn.style.background = "";
+            btn.style.borderColor = "";
+            label.textContent = "Screen";
+        }
+    } catch (err) {
+        // User cancelled the screen share picker
+        screenShareEnabled = false;
+        btn.style.background = "";
+        btn.style.borderColor = "";
+        label.textContent = "Screen";
+    }
+}
+
+// ── Audio visualizer for AI co-host (Web Audio API) ─────────────
+
+function setupAIAudioVisualizer(audioElement) {
+    try {
+        if (!aiAudioContext) {
+            aiAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        const source = aiAudioContext.createMediaElementSource(audioElement);
+        aiAnalyser = aiAudioContext.createAnalyser();
+        aiAnalyser.fftSize = 64;
+        aiAnalyser.smoothingTimeConstant = 0.75;
+        source.connect(aiAnalyser);
+        aiAnalyser.connect(aiAudioContext.destination);
+        renderAIVisualizer();
+    } catch (err) {
+        // Fallback: use CSS animation if Web Audio API fails
+    }
+}
+
+function renderAIVisualizer() {
+    if (!aiAnalyser) return;
+
+    const bars = document.querySelectorAll("#ai-audio-bars .audio-bar");
+    const dataArray = new Uint8Array(aiAnalyser.frequencyBinCount);
+
+    function draw() {
+        aiVisualizerRAF = requestAnimationFrame(draw);
+        aiAnalyser.getByteFrequencyData(dataArray);
+
+        const barCount = bars.length;
+        // Map frequency bins to bar heights
+        const step = Math.floor(dataArray.length / barCount);
+        for (let i = 0; i < barCount; i++) {
+            const value = dataArray[i * step] || 0;
+            const height = Math.max(3, (value / 255) * 28);
+            bars[i].style.height = height + "px";
+        }
+    }
+    draw();
+}
+
+// ── Connection quality indicator ────────────────────────────────
+
+function onConnectionQualityChanged(quality, participant) {
+    // Add/update quality indicator on participant tile
+    const tileId = participant.identity === room.localParticipant.identity
+        ? "tile-local"
+        : "tile-" + participant.identity;
+    const tile = document.getElementById(tileId);
+    if (!tile) return;
+
+    let indicator = tile.querySelector(".conn-quality");
+    if (!indicator) {
+        indicator = document.createElement("div");
+        indicator.className = "conn-quality";
+        tile.appendChild(indicator);
+    }
+
+    // quality: ConnectionQuality.Excellent (3), Good (2), Poor (1), Lost (0)
+    const level = quality === ConnectionQuality.Excellent ? 3
+        : quality === ConnectionQuality.Good ? 2
+        : quality === ConnectionQuality.Poor ? 1
+        : 0;
+
+    const heights = [6, 10, 14];
+    indicator.innerHTML = heights.map(function(h, i) {
+        let cls = "conn-bar";
+        if (i < level) {
+            cls += level >= 2 ? " active" : level === 1 ? " warn" : " poor";
+        }
+        return '<div class="' + cls + '" style="height:' + h + 'px;"></div>';
+    }).join("");
 }
 
 // ── Initialize ───────────────────────────────────────────────────

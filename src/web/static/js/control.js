@@ -735,6 +735,133 @@ async function exportEpisode(episodeId) {
     } catch (_) {}
 }
 
+// ── Content Pipeline ──────────────────────────────────────────────
+
+let _currentContentType = "";
+let _currentContentText = "";
+
+async function loadContentEpisodes() {
+    const select = document.getElementById("content-episode-select");
+    if (!select) return;
+    try {
+        const res = await fetch("/api/episodes");
+        const data = await res.json();
+        if (data.episodes && data.episodes.length > 0) {
+            select.innerHTML = '<option value="">Select an episode...</option>' +
+                data.episodes.map(function(ep) {
+                    const dateStr = ep.date ? ep.date.split("T")[0] : "";
+                    return '<option value="' + ep.id + '">' + escapeHtml(ep.title) + ' (' + dateStr + ')</option>';
+                }).join("");
+        }
+    } catch (_) {}
+}
+
+function onContentEpisodeChange() {
+    // Reset content result display when episode changes
+    document.getElementById("content-result").classList.add("hidden");
+    document.getElementById("content-status").classList.add("hidden");
+}
+
+async function generateContent(contentType) {
+    const select = document.getElementById("content-episode-select");
+    const episodeId = select ? select.value : "";
+    if (!episodeId) return;
+
+    const statusEl = document.getElementById("content-status");
+    const resultEl = document.getElementById("content-result");
+    const outputEl = document.getElementById("content-output");
+
+    statusEl.classList.remove("hidden");
+    resultEl.classList.add("hidden");
+
+    const labels = { "blog-post": "blog post", "show-notes": "show notes", "social-clips": "social clips" };
+    statusEl.innerHTML = '<span class="spinner"></span> Generating ' + (labels[contentType] || contentType) + '...';
+
+    try {
+        const res = await fetch("/api/episodes/" + encodeURIComponent(episodeId) + "/" + contentType, {
+            method: "POST",
+        });
+        const data = await res.json();
+
+        statusEl.classList.add("hidden");
+
+        if (data.success && data.content) {
+            _currentContentType = contentType;
+            _currentContentText = data.content;
+            outputEl.textContent = data.content;
+            resultEl.classList.remove("hidden");
+        } else {
+            statusEl.classList.remove("hidden");
+            statusEl.innerHTML = '<span class="text-red-400">Failed: ' + escapeHtml(data.error || data.detail || "Unknown error") + '</span>';
+        }
+    } catch (err) {
+        statusEl.classList.remove("hidden");
+        statusEl.innerHTML = '<span class="text-red-400">Request failed</span>';
+    }
+}
+
+function copyContent() {
+    if (_currentContentText) {
+        navigator.clipboard.writeText(_currentContentText);
+        const btn = event.currentTarget;
+        btn.parentElement.classList.add("copy-flash");
+        setTimeout(function() { btn.parentElement.classList.remove("copy-flash"); }, 500);
+    }
+}
+
+function exportContent() {
+    if (!_currentContentText) return;
+    const blob = new Blob([_currentContentText], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = _currentContentType + "_" + new Date().toISOString().slice(0, 10) + ".md";
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// ── Recording ─────────────────────────────────────────────────────
+
+async function startRecording() {
+    const roomName = window._activeRoomName || ROOM_NAME;
+    if (!roomName) return;
+
+    const statusEl = document.getElementById("rec-status");
+    statusEl.textContent = "Starting...";
+
+    try {
+        const res = await fetch("/api/rooms/" + encodeURIComponent(roomName) + "/recording/start", { method: "POST" });
+        const data = await res.json();
+
+        if (data.success) {
+            document.getElementById("rec-start-btn").classList.add("hidden");
+            document.getElementById("rec-stop-btn").classList.remove("hidden");
+            statusEl.innerHTML = '<span class="text-red-400">Recording</span>';
+        } else {
+            statusEl.textContent = data.message || "Not available";
+        }
+    } catch (_) {
+        statusEl.textContent = "Failed to start";
+    }
+}
+
+async function stopRecording() {
+    const roomName = window._activeRoomName || ROOM_NAME;
+    if (!roomName) return;
+
+    const statusEl = document.getElementById("rec-status");
+    try {
+        const res = await fetch("/api/rooms/" + encodeURIComponent(roomName) + "/recording/stop", { method: "POST" });
+        const data = await res.json();
+
+        document.getElementById("rec-start-btn").classList.remove("hidden");
+        document.getElementById("rec-stop-btn").classList.add("hidden");
+        statusEl.textContent = data.message || "Stopped";
+    } catch (_) {
+        statusEl.textContent = "Failed to stop";
+    }
+}
+
 // ── Initialize ────────────────────────────────────────────────────
 
 (async function init() {
@@ -750,4 +877,5 @@ async function exportEpisode(episodeId) {
     loadVoices();
     checkActiveSession();
     loadEpisodes();
+    loadContentEpisodes();
 })();

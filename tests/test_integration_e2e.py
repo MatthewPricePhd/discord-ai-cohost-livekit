@@ -272,3 +272,61 @@ async def test_providers_endpoint(client):
     data = response.json()
     assert "tts_provider" in data
     assert "stt_provider" in data
+
+
+# ── Phase 4 Tests ──────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_content_pipeline_blog_post_404(client):
+    """POST /api/episodes/{id}/blog-post with bad ID returns error."""
+    response = await client.post("/api/episodes/nonexistent/blog-post")
+    assert response.status_code in (404, 500)
+
+
+@pytest.mark.asyncio
+async def test_content_pipeline_show_notes_404(client):
+    """POST /api/episodes/{id}/show-notes with bad ID returns error."""
+    response = await client.post("/api/episodes/nonexistent/show-notes")
+    assert response.status_code in (404, 500)
+
+
+@pytest.mark.asyncio
+async def test_content_pipeline_social_clips_404(client):
+    """POST /api/episodes/{id}/social-clips with bad ID returns error."""
+    response = await client.post("/api/episodes/nonexistent/social-clips")
+    assert response.status_code in (404, 500)
+
+
+@pytest.mark.asyncio
+async def test_get_content_invalid_type(client):
+    """GET /api/episodes/{id}/content/{type} with bad type returns 400."""
+    response = await client.get("/api/episodes/some-id/content/invalid-type")
+    assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_get_content_not_generated(client):
+    """GET /api/episodes/{id}/content/blog-post returns 404 if not generated."""
+    response = await client.get("/api/episodes/some-id/content/blog-post")
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_recording_start_stub(client, studio_app):
+    """POST /api/rooms/{room}/recording/start returns stub response."""
+    response = await client.post("/api/rooms/test-room/recording/start")
+    assert response.status_code == 200
+    data = response.json()
+    # Stub always returns success=False with a message
+    assert data["success"] is False
+    assert "message" in data
+
+
+@pytest.mark.asyncio
+async def test_recording_stop_stub(client, studio_app):
+    """POST /api/rooms/{room}/recording/stop returns stub response."""
+    response = await client.post("/api/rooms/test-room/recording/stop")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is False

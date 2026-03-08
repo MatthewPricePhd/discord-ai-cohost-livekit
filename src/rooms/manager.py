@@ -126,6 +126,35 @@ class RoomManager:
         await self._get_api().room.delete_room(api.DeleteRoomRequest(room=room_name))
         logger.info("Deleted room", name=room_name)
 
+    # ------------------------------------------------------------------
+    # Recording (LiveKit Egress) — stubs
+    # ------------------------------------------------------------------
+
+    async def start_recording(self, room_name: str) -> dict:
+        """Start recording a room via LiveKit Egress.
+
+        This is a stub — actual Egress support requires the Egress service
+        running alongside LiveKit Server.  On the free Cloud tier this is
+        typically not available.
+        """
+        logger.info("Recording start requested (stub)", room_name=room_name)
+        return {
+            "success": False,
+            "message": (
+                "Recording requires LiveKit Egress service. "
+                "This feature is stubbed — deploy Egress alongside your "
+                "LiveKit server to enable it."
+            ),
+        }
+
+    async def stop_recording(self, room_name: str) -> dict:
+        """Stop recording a room."""
+        logger.info("Recording stop requested (stub)", room_name=room_name)
+        return {
+            "success": False,
+            "message": "No active recording to stop (Egress not configured).",
+        }
+
     async def close(self):
         """Clean up API client."""
         if self._api is not None:

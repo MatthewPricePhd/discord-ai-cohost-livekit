@@ -9,9 +9,10 @@ try:
     import chromadb
     from chromadb.config import Settings as ChromaSettings
     CHROMA_AVAILABLE = True
-except ImportError:
+except Exception:
     CHROMA_AVAILABLE = False
     chromadb = None
+    ChromaSettings = None  # type: ignore[assignment,misc]
 
 from ..config import get_logger, settings
 
@@ -26,10 +27,14 @@ class VectorStore:
         self.collection = None
         self.collection_name = "ai_cohost_documents"
         self.embedding_model = "text-embedding-3-small"  # OpenAI model
-        
-        # Initialize client
-        asyncio.create_task(self._initialize_client())
+        self._init_attempted = False
     
+    async def _ensure_initialized(self):
+        """Lazily initialize the client on first use."""
+        if not self._init_attempted:
+            self._init_attempted = True
+            await self._initialize_client()
+
     async def _initialize_client(self):
         """Initialize the vector database client"""
         try:
@@ -69,21 +74,22 @@ class VectorStore:
             self.client = None
             self.collection = None
     
-    async def store_document(self, 
-                           document_id: str, 
-                           metadata: Dict[str, Any], 
+    async def store_document(self,
+                           document_id: str,
+                           metadata: Dict[str, Any],
                            chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Store document chunks in vector database
-        
+
         Args:
             document_id: Unique document identifier
             metadata: Document metadata
             chunks: List of text chunks with their data
-            
+
         Returns:
             Dict with storage result
         """
+        await self._ensure_initialized()
         try:
             if not self.collection:
                 return {
@@ -158,21 +164,22 @@ class VectorStore:
                 "error": str(e)
             }
     
-    async def search_similar(self, 
-                           query: str, 
+    async def search_similar(self,
+                           query: str,
                            n_results: int = 5,
                            document_filter: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Search for similar document chunks
-        
+
         Args:
             query: Search query text
             n_results: Number of results to return
             document_filter: Optional document ID to filter by
-            
+
         Returns:
             List of similar chunks with metadata and scores
         """
+        await self._ensure_initialized()
         try:
             if not self.collection:
                 logger.warning("Vector store not initialized for search")
@@ -272,13 +279,14 @@ class VectorStore:
     async def delete_document(self, document_id: str) -> bool:
         """
         Delete all chunks for a document
-        
+
         Args:
             document_id: Document ID to delete
-            
+
         Returns:
             Success boolean
         """
+        await self._ensure_initialized()
         try:
             if not self.collection:
                 logger.warning("Vector store not initialized for deletion")
@@ -311,6 +319,7 @@ class VectorStore:
     
     async def get_document_chunks(self, document_id: str) -> List[Dict[str, Any]]:
         """Get all chunks for a specific document"""
+        await self._ensure_initialized()
         try:
             if not self.collection:
                 return []

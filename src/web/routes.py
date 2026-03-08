@@ -1328,4 +1328,104 @@ def create_api_router(ai_app: "StudioApp") -> APIRouter:
             logger.error("Error listing documents", error=str(e))
             raise HTTPException(status_code=500, detail=str(e))
 
+    # ------------------------------------------------------------------
+    # Phase 4: Content Pipeline
+    # ------------------------------------------------------------------
+
+    from ..archive.content_pipeline import ContentPipeline
+
+    _content_pipeline = ContentPipeline(store=_archive_store)
+
+    @router.post("/episodes/{episode_id}/blog-post")
+    async def generate_blog_post(episode_id: str):
+        """Generate a blog post from the episode transcript."""
+        try:
+            result = await _content_pipeline.generate_blog_post(episode_id)
+            if not result.get("success"):
+                status = 404 if "not found" in result.get("error", "").lower() else 500
+                raise HTTPException(status_code=status, detail=result.get("error", "Generation failed"))
+            return result
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error("Error generating blog post", episode_id=episode_id, error=str(e))
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @router.post("/episodes/{episode_id}/show-notes")
+    async def generate_show_notes(episode_id: str):
+        """Generate show notes from the episode transcript."""
+        try:
+            result = await _content_pipeline.generate_show_notes(episode_id)
+            if not result.get("success"):
+                status = 404 if "not found" in result.get("error", "").lower() else 500
+                raise HTTPException(status_code=status, detail=result.get("error", "Generation failed"))
+            return result
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error("Error generating show notes", episode_id=episode_id, error=str(e))
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @router.post("/episodes/{episode_id}/social-clips")
+    async def generate_social_clips(episode_id: str):
+        """Generate social media clips from the episode transcript."""
+        try:
+            result = await _content_pipeline.generate_social_clips(episode_id)
+            if not result.get("success"):
+                status = 404 if "not found" in result.get("error", "").lower() else 500
+                raise HTTPException(status_code=status, detail=result.get("error", "Generation failed"))
+            return result
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error("Error generating social clips", episode_id=episode_id, error=str(e))
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @router.get("/episodes/{episode_id}/content/{content_type}")
+    async def get_generated_content(episode_id: str, content_type: str):
+        """Get previously generated content for an episode."""
+        valid_types = {"blog-post", "show-notes", "social-clips"}
+        if content_type not in valid_types:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid content type. Must be one of: {', '.join(sorted(valid_types))}",
+            )
+
+        cached = _content_pipeline.get_cached(episode_id, content_type)
+        if cached is None:
+            raise HTTPException(status_code=404, detail="Content not yet generated")
+        return {"success": True, **cached}
+
+    # ------------------------------------------------------------------
+    # Phase 4: Recording Stubs (LiveKit Egress)
+    # ------------------------------------------------------------------
+
+    @router.post("/rooms/{room_name}/recording/start")
+    async def start_recording(room_name: str):
+        """Start recording the room composite via LiveKit Egress.
+
+        Note: Requires LiveKit Egress service. Returns a stub response if
+        Egress is not available (e.g. on the free Cloud tier).
+        """
+        try:
+            result = await ai_app.room_manager.start_recording(room_name)
+            return result
+        except Exception as e:
+            logger.error("Error starting recording", room_name=room_name, error=str(e))
+            return {
+                "success": False,
+                "error": str(e),
+                "message": "Recording requires LiveKit Egress service. This may not be available on the free Cloud tier.",
+            }
+
+    @router.post("/rooms/{room_name}/recording/stop")
+    async def stop_recording(room_name: str):
+        """Stop recording."""
+        try:
+            result = await ai_app.room_manager.stop_recording(room_name)
+            return result
+        except Exception as e:
+            logger.error("Error stopping recording", room_name=room_name, error=str(e))
+            return {"success": False, "error": str(e)}
+
     return router
