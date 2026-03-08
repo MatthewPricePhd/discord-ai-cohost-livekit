@@ -1,7 +1,7 @@
 """
 API routes for Discord AI Co-Host Bot web interface
 """
-from typing import Dict, Any, List, Optional, Union, TYPE_CHECKING
+from typing import Dict, Any, List, Optional, TYPE_CHECKING
 
 import os
 import time
@@ -28,10 +28,6 @@ class StatusResponse(BaseModel):
     discord_status: Optional[Dict[str, Any]] = None
     openai_status: Optional[Dict[str, Any]] = None
     web_server_running: bool
-
-
-class ChannelJoinRequest(BaseModel):
-    channel_id: Union[str, int]  # Accept both string and int for compatibility
 
 
 class ModeToggleResponse(BaseModel):
@@ -97,46 +93,6 @@ def create_api_router(ai_app: "AICoHostApp") -> APIRouter:
             logger.error("Error getting status", error=str(e))
             raise HTTPException(status_code=500, detail="Failed to get status")
     
-    @router.post("/voice/join")
-    async def join_voice_channel(request: ChannelJoinRequest):
-        """Join a Discord voice channel"""
-        try:
-            channel_id = int(request.channel_id)
-            success = await ai_app.join_voice_channel(channel_id)
-
-            if success:
-                return {
-                    "success": True,
-                    "message": f"Successfully joined voice channel {request.channel_id}",
-                    "channel_id": request.channel_id
-                }
-            else:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Failed to join voice channel {request.channel_id}"
-                )
-                
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error("Error joining voice channel",
-                        channel_id=request.channel_id,
-                        error=str(e))
-            raise HTTPException(status_code=500, detail=str(e))
-    
-    @router.post("/voice/leave")
-    async def leave_voice_channel():
-        """Leave the current voice channel"""
-        try:
-            await ai_app.leave_voice_channel()
-            return {
-                "success": True,
-                "message": "Successfully left voice channel"
-            }
-        except Exception as e:
-            logger.error("Error leaving voice channel", error=str(e))
-            raise HTTPException(status_code=500, detail=str(e))
-    
     @router.post("/mode/toggle", response_model=ModeToggleResponse)
     async def toggle_mode():
         """Toggle between passive and active mode"""
@@ -162,49 +118,6 @@ def create_api_router(ai_app: "AICoHostApp") -> APIRouter:
             }
         except Exception as e:
             logger.error("Error forcing AI response", error=str(e))
-            raise HTTPException(status_code=500, detail=str(e))
-    
-    @router.get("/discord/guilds")
-    async def get_discord_guilds():
-        """Get list of Discord guilds the bot is in"""
-        try:
-            if not ai_app.discord_client or not ai_app.discord_client._bot_ready:
-                raise HTTPException(status_code=400, detail="Discord bot not ready")
-            
-            guilds = []
-            for guild in ai_app.discord_client.guilds:
-                guild_data = {
-                    "id": str(guild.id),
-                    "name": guild.name,
-                    "member_count": guild.member_count,
-                    "voice_channels": []
-                }
-
-                # Get voice channels
-                for channel in guild.voice_channels:
-                    channel_data = {
-                        "id": str(channel.id),
-                        "name": channel.name,
-                        "user_limit": channel.user_limit,
-                        "members": [
-                            {
-                                "id": str(member.id),
-                                "name": member.display_name,
-                                "bot": member.bot
-                            }
-                            for member in channel.members
-                        ]
-                    }
-                    guild_data["voice_channels"].append(channel_data)
-                
-                guilds.append(guild_data)
-            
-            return {"guilds": guilds}
-            
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error("Error getting Discord guilds", error=str(e))
             raise HTTPException(status_code=500, detail=str(e))
     
     @router.post("/documents/upload", response_model=DocumentUploadResponse)
