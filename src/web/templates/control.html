@@ -37,6 +37,9 @@
         .scroll-thin::-webkit-scrollbar-track { background: transparent; }
         .scroll-thin::-webkit-scrollbar-thumb { background: #2a2a3a; border-radius: 3px; }
         .scroll-thin::-webkit-scrollbar-thumb:hover { background: #3a3a4a; }
+        .scroll-thin-x::-webkit-scrollbar { height: 4px; }
+        .scroll-thin-x::-webkit-scrollbar-track { background: transparent; }
+        .scroll-thin-x::-webkit-scrollbar-thumb { background: #2a2a3a; border-radius: 3px; }
 
         /* Glass card */
         .glass-card {
@@ -93,9 +96,9 @@
         /* Mode selector */
         .mode-btn {
             flex: 1;
-            padding: 8px 4px;
+            padding: 6px 4px;
             border-radius: 8px;
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             font-weight: 600;
             text-align: center;
             cursor: pointer;
@@ -120,9 +123,9 @@
             background: #111119;
             border: 1px solid #232336;
             border-radius: 8px;
-            padding: 8px 12px;
+            padding: 6px 10px;
             color: white;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             transition: border-color 0.2s ease;
             outline: none;
         }
@@ -134,12 +137,12 @@
             background: #111119;
             border: 1px solid #232336;
             border-radius: 8px;
-            padding: 8px 12px;
+            padding: 6px 10px;
             color: white;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-family: 'JetBrains Mono', monospace;
             resize: vertical;
-            min-height: 80px;
+            min-height: 60px;
             transition: border-color 0.2s ease;
             outline: none;
         }
@@ -150,23 +153,23 @@
             background: #111119;
             border: 1px solid #232336;
             border-radius: 8px;
-            padding: 8px 12px;
+            padding: 6px 10px;
             color: white;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             outline: none;
             cursor: pointer;
             appearance: none;
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
-            background-position: right 8px center;
+            background-position: right 6px center;
             background-repeat: no-repeat;
-            background-size: 20px;
+            background-size: 18px;
         }
         .ctrl-select:focus { border-color: #6366f180; }
 
         /* Transcript entry */
         .transcript-entry {
             animation: fade-in 0.3s ease-out;
-            padding: 6px 0;
+            padding: 4px 0;
             border-bottom: 1px solid rgba(35, 35, 54, 0.5);
         }
         .transcript-entry:last-child { border-bottom: none; }
@@ -181,14 +184,14 @@
             background: #111119;
             border: 1px solid #232336;
             border-radius: 8px;
-            padding: 10px 12px;
+            padding: 8px 10px;
             animation: fade-in 0.3s ease-out;
         }
 
         /* Cost counter */
         .cost-value {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 1.5rem;
+            font-size: 1.1rem;
             font-weight: 600;
             background: linear-gradient(135deg, #4ade80, #22d3ee);
             -webkit-background-clip: text;
@@ -213,7 +216,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 6px 0;
+            padding: 4px 0;
             border-bottom: 1px solid rgba(35, 35, 54, 0.5);
         }
         .guest-row:last-child { border-bottom: none; }
@@ -230,29 +233,6 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Mini preview */
-        .mini-preview {
-            aspect-ratio: 16/5;
-            background: linear-gradient(135deg, #111119, #16161f);
-            border-radius: 8px;
-            overflow: hidden;
-            position: relative;
-        }
-
-        /* Column layout */
-        .control-columns {
-            display: grid;
-            grid-template-columns: 280px 280px 1fr 300px;
-            gap: 12px;
-            height: 100%;
-        }
-
-        @media (max-width: 1400px) {
-            .control-columns {
-                grid-template-columns: 260px 260px 1fr 280px;
-            }
-        }
-
         /* Copy button animation */
         .copy-flash {
             animation: flash-green 0.5s ease-out;
@@ -260,6 +240,111 @@
         @keyframes flash-green {
             0% { background: rgba(34, 197, 94, 0.3); }
             100% { background: transparent; }
+        }
+
+        /* ===== Three-column producer layout ===== */
+        .producer-layout {
+            display: grid;
+            grid-template-columns: 220px 1fr 280px;
+            gap: 8px;
+            height: 100%;
+            min-height: 0;
+        }
+
+        /* Confidence monitor thumbnails */
+        .confidence-monitor {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 6px 0;
+            align-items: flex-end;
+        }
+        .monitor-thumb {
+            flex-shrink: 0;
+            width: 100px;
+            height: 75px;
+            background: linear-gradient(135deg, #111119, #16161f);
+            border: 1px solid #232336;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .monitor-thumb .thumb-label {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.7);
+            padding: 2px 4px;
+            font-size: 9px;
+            color: #9ca3af;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Tab system */
+        .tab-bar {
+            display: flex;
+            gap: 0;
+            border-bottom: 1px solid #232336;
+            flex-shrink: 0;
+        }
+        .tab-btn {
+            padding: 6px 12px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #6b7280;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        .tab-btn:hover { color: #d1d5db; }
+        .tab-btn.active {
+            color: #818cf8;
+            border-bottom-color: #6366f1;
+        }
+        .tab-panel {
+            display: none;
+            overflow-y: auto;
+            flex: 1;
+            min-height: 0;
+        }
+        .tab-panel.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Section heading (compact) */
+        .section-head {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+        .section-head .section-label {
+            font-size: 0.6rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #6b7280;
+        }
+
+        /* Left column panels */
+        .left-panel {
+            padding: 8px;
+        }
+        .left-panel + .left-panel {
+            border-top: 1px solid #232336;
         }
 
         /* ===== Collapsible panels ===== */
@@ -292,16 +377,19 @@
             opacity: 0;
         }
 
-        /* ===== Mobile responsive (< 768px) ===== */
+        /* ===== Responsive ===== */
+        @media (max-width: 1200px) {
+            .producer-layout {
+                grid-template-columns: 200px 1fr 250px;
+            }
+        }
+
         @media (max-width: 767px) {
-            /* Stack columns vertically */
-            .control-columns {
+            .producer-layout {
                 grid-template-columns: 1fr;
                 overflow-y: auto;
                 height: auto;
             }
-
-            /* Let main scroll instead of being fixed height */
             main.flex-1 {
                 overflow: visible;
                 min-height: auto;
@@ -311,167 +399,92 @@
                 overflow-y: auto;
                 overflow-x: hidden;
             }
-
-            /* Each column becomes scrollable section */
-            .control-columns > div {
+            .producer-layout > div {
                 overflow-y: visible;
                 max-height: none;
-                padding-right: 0;
-                padding-left: 0;
             }
-
-            /* Show collapsible panel toggles on mobile */
-            .panel-toggle {
-                display: flex;
-            }
-
-            /* Touch-friendly buttons: min 44px tap targets */
-            .ctrl-btn {
-                min-height: 44px;
-                padding: 10px 14px;
-                font-size: 0.8rem;
-            }
-            .mode-btn {
-                min-height: 44px;
-                padding: 10px 6px;
-                font-size: 0.72rem;
-            }
-            .ctrl-input,
-            .ctrl-textarea,
-            .ctrl-select {
-                min-height: 44px;
-                padding: 10px 12px;
-                font-size: 0.85rem;
-            }
-
-            /* Transcript panel: fixed height so it scrolls on mobile */
-            #transcript-box {
-                max-height: 50vh;
-                overflow-y: auto;
-            }
-
-            /* Insights list: scrollable with cap */
-            #insights-list {
-                max-height: 40vh;
-                overflow-y: auto;
-            }
-
-            /* Header: wrap items to avoid overflow */
-            header {
-                flex-wrap: wrap;
-                gap: 8px;
-                padding: 8px 12px;
-            }
-            header > div {
-                flex-wrap: wrap;
-                gap: 6px;
-            }
-
-            /* Mini preview: reduce height on small screens */
-            .mini-preview {
-                aspect-ratio: 16/4;
-            }
-
-            /* Content output: smaller max height */
-            #content-output {
-                max-height: 40vh;
-            }
-
-            /* Memory results / episode list: taller on mobile for usability */
-            #memory-results,
-            #episode-list {
-                max-height: 50vh;
-            }
-
-            /* Export button in transcript header: ensure tappable */
-            .glass-card .ctrl-btn[style*="padding: 4px"] {
-                min-height: 36px;
-                padding: 6px 10px !important;
-            }
+            .panel-toggle { display: flex; }
+            .ctrl-btn { min-height: 44px; padding: 10px 14px; font-size: 0.8rem; }
+            .mode-btn { min-height: 44px; padding: 10px 6px; font-size: 0.72rem; }
+            .ctrl-input, .ctrl-textarea, .ctrl-select { min-height: 44px; padding: 10px 12px; font-size: 0.85rem; }
+            #transcript-box { max-height: 50vh; }
+            #insights-list { max-height: 40vh; }
+            .confidence-monitor { flex-wrap: wrap; }
         }
 
-        /* ===== Tablet breakpoint (768px - 1024px) ===== */
         @media (min-width: 768px) and (max-width: 1024px) {
-            .control-columns {
-                grid-template-columns: 1fr 1fr;
-                grid-template-rows: auto auto;
+            .producer-layout {
+                grid-template-columns: 200px 1fr;
             }
         }
     </style>
 </head>
-<body class="bg-studio-bg text-white min-h-screen flex flex-col overflow-hidden">
+<body class="bg-studio-bg text-white h-screen flex flex-col overflow-hidden">
 
     <!-- Header -->
-    <header class="flex items-center justify-between px-4 py-2 border-b border-studio-border bg-studio-surface/80 backdrop-blur-sm flex-shrink-0">
-        <div class="flex items-center gap-4">
+    <header class="flex items-center justify-between px-3 py-1.5 border-b border-studio-border bg-studio-surface/80 backdrop-blur-sm flex-shrink-0" style="height:40px;">
+        <div class="flex items-center gap-3">
             <div class="flex items-center gap-2">
-                <svg class="w-5 h-5 text-studio-accent" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 text-studio-accent" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
                     <line x1="8" y1="21" x2="16" y2="21"/>
                     <line x1="12" y1="17" x2="12" y2="21"/>
                 </svg>
-                <h1 class="text-sm font-semibold tracking-tight">Control Room</h1>
+                <h1 class="text-xs font-semibold tracking-tight">Control Room</h1>
             </div>
-            <div id="room-status" class="flex items-center gap-2 text-[11px] px-3 py-1 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+            <div id="room-status" class="flex items-center gap-1.5 text-[10px] px-2.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
                 <div class="w-1.5 h-1.5 rounded-full bg-yellow-400"></div>
                 Connecting...
             </div>
-            <span id="room-name-display" class="text-[11px] text-gray-500 font-mono"></span>
+            <span id="room-name-display" class="text-[10px] text-gray-500 font-mono"></span>
+            <div class="flex items-center gap-1 text-[10px] text-gray-500">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                <span id="participant-count">0</span>
+            </div>
         </div>
-        <div class="flex items-center gap-3">
-            <!-- Session cost badge -->
-            <div class="flex items-center gap-2 px-3 py-1 rounded-full bg-studio-card border border-studio-border">
-                <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                <span id="session-cost-badge" class="text-[11px] font-mono text-emerald-400">$0.0000</span>
+        <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-studio-card border border-studio-border">
+                <svg class="w-3 h-3 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                <span id="session-cost-badge" class="text-[10px] font-mono text-emerald-400">$0.0000</span>
             </div>
-            <!-- Duration -->
-            <div class="flex items-center gap-2 px-3 py-1 rounded-full bg-studio-card border border-studio-border">
-                <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
-                <span id="session-duration" class="text-[11px] font-mono text-gray-400">00:00:00</span>
+            <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-studio-card border border-studio-border">
+                <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
+                <span id="session-duration" class="text-[10px] font-mono text-gray-400">00:00:00</span>
             </div>
-            <a href="/studio/join?token={{ token }}" target="_blank" class="ctrl-btn btn-surface text-[11px]">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15,3 21,3 21,9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                Open Studio
+            <a href="/studio/join?token={{ token }}" target="_blank" class="ctrl-btn btn-surface" style="padding:3px 8px;font-size:10px;">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15,3 21,3 21,9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                Studio
             </a>
         </div>
     </header>
 
-    <!-- Mini studio preview -->
-    <div class="px-4 pt-3 flex-shrink-0">
-        <div class="mini-preview flex items-center justify-center" id="mini-preview">
-            <div class="flex items-center gap-3 text-gray-500">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14M5 18h8a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2z"/></svg>
-                <span class="text-xs">Studio Preview &mdash; <span id="participant-count">0</span> participants</span>
-            </div>
-        </div>
-    </div>
+    <!-- Main three-column layout -->
+    <main class="flex-1 p-2 overflow-hidden min-h-0">
+        <div class="producer-layout h-full">
 
-    <!-- Main control columns -->
-    <main class="flex-1 p-3 overflow-hidden min-h-0">
-        <div class="control-columns h-full">
+            <!-- ============ LEFT COLUMN (220px) ============ -->
+            <div class="glass-card flex flex-col overflow-y-auto scroll-thin">
 
-            <!-- Column 1: Session Management -->
-            <div class="flex flex-col gap-3 overflow-y-auto scroll-thin pr-1">
-                <!-- Room Controls -->
-                <div class="glass-card p-3">
-                    <div class="flex items-center gap-2 mb-3">
-                        <svg class="w-3.5 h-3.5 text-studio-accent-light" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 0 0 1 1h3m10-11l2 2m-2-2v10a1 1 0 0 1-1 1h-3m-4 0h4"/></svg>
-                        <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">Room</span>
+                <!-- Session Controls -->
+                <div class="left-panel">
+                    <div class="section-head">
+                        <svg class="w-3 h-3 text-studio-accent-light" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 0 0 1 1h3m10-11l2 2m-2-2v10a1 1 0 0 1-1 1h-3m-4 0h4"/></svg>
+                        <span class="section-label">Session</span>
                     </div>
-                    <div class="space-y-2">
-                        <div class="flex gap-2">
-                            <input id="room-title" type="text" value="Podcast Session" placeholder="Episode title" class="ctrl-input flex-1">
-                            <button onclick="createRoom()" class="ctrl-btn btn-accent" id="create-room-btn">Create</button>
+                    <div class="space-y-1.5">
+                        <div class="flex gap-1.5">
+                            <input id="room-title" type="text" value="Podcast Session" placeholder="Episode title" class="ctrl-input flex-1" style="padding:5px 8px;font-size:0.7rem;">
+                            <button onclick="createRoom()" class="ctrl-btn btn-accent" id="create-room-btn" style="padding:4px 8px;font-size:0.65rem;">Create</button>
                         </div>
                         <div id="active-room-info" class="hidden">
-                            <div class="text-[11px] text-gray-500 font-mono mb-2 truncate" id="active-room-name"></div>
-                            <div class="flex gap-2">
-                                <button onclick="startSession()" class="ctrl-btn btn-success flex-1" id="session-start-btn">
-                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+                            <div class="text-[10px] text-gray-500 font-mono mb-1.5 truncate" id="active-room-name"></div>
+                            <div class="flex gap-1.5">
+                                <button onclick="startSession()" class="ctrl-btn btn-success flex-1" id="session-start-btn" style="padding:4px 8px;font-size:0.65rem;">
+                                    <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
                                     Start
                                 </button>
-                                <button onclick="stopSession()" class="ctrl-btn btn-danger flex-1 hidden" id="session-stop-btn">
-                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+                                <button onclick="stopSession()" class="ctrl-btn btn-danger flex-1 hidden" id="session-stop-btn" style="padding:4px 8px;font-size:0.65rem;">
+                                    <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
                                     Stop
                                 </button>
                             </div>
@@ -479,311 +492,319 @@
                     </div>
                 </div>
 
-                <!-- Invite Links -->
-                <div class="glass-card p-3">
-                    <div class="flex items-center gap-2 mb-3">
-                        <svg class="w-3.5 h-3.5 text-studio-accent-light" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                        <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">Invite Links</span>
+                <!-- AI Mode Switcher -->
+                <div class="left-panel">
+                    <div class="section-head">
+                        <svg class="w-3 h-3 text-studio-accent-light" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1.27A7 7 0 0 1 14 22h-4a7 7 0 0 1-6.73-3H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/></svg>
+                        <span class="section-label">AI Mode</span>
                     </div>
-                    <div class="space-y-2">
-                        <div class="flex gap-2">
-                            <input id="invite-name" type="text" placeholder="Guest name" class="ctrl-input flex-1">
-                            <select id="invite-role" class="ctrl-select" style="width: 110px;">
+                    <div class="flex gap-1.5">
+                        <button onclick="setMode('passive')" class="mode-btn active" id="mode-passive">
+                            <svg class="w-3.5 h-3.5 mx-auto mb-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            Passive
+                        </button>
+                        <button onclick="setMode('speech-to-speech')" class="mode-btn" id="mode-speech">
+                            <svg class="w-3.5 h-3.5 mx-auto mb-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+                            Speech
+                        </button>
+                        <button onclick="setMode('ask-chatgpt')" class="mode-btn" id="mode-chatgpt">
+                            <svg class="w-3.5 h-3.5 mx-auto mb-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                            ChatGPT
+                        </button>
+                    </div>
+                    <div id="mode-description" class="text-[9px] text-gray-500 mt-1.5 text-center">Transcription only &mdash; ~$0.005/min</div>
+                </div>
+
+                <!-- Invite Links -->
+                <div class="left-panel">
+                    <div class="section-head">
+                        <svg class="w-3 h-3 text-studio-accent-light" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                        <span class="section-label">Invite Links</span>
+                    </div>
+                    <div class="space-y-1.5">
+                        <input id="invite-name" type="text" placeholder="Guest name" class="ctrl-input" style="padding:5px 8px;font-size:0.7rem;">
+                        <div class="flex gap-1.5">
+                            <select id="invite-role" class="ctrl-select flex-1" style="padding:5px 8px;font-size:0.7rem;">
                                 <option value="guest">Guest</option>
                                 <option value="co-producer">Co-Producer</option>
                             </select>
+                            <button onclick="generateInvite()" class="ctrl-btn btn-surface" id="gen-invite-btn" style="padding:4px 8px;font-size:0.65rem;">
+                                Generate
+                            </button>
                         </div>
-                        <button onclick="generateInvite()" class="ctrl-btn btn-surface w-full justify-center" id="gen-invite-btn">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                            Generate Link
-                        </button>
                         <div id="invite-link-result" class="hidden">
-                            <div class="flex items-center gap-1 bg-studio-bg rounded-lg px-2 py-1.5">
-                                <input id="invite-link-input" type="text" readonly class="bg-transparent text-[10px] text-gray-400 font-mono flex-1 outline-none border-none">
-                                <button onclick="copyInviteLink()" class="ctrl-btn btn-surface" style="padding: 4px 8px;">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            <div class="flex items-center gap-1 bg-studio-bg rounded-lg px-2 py-1">
+                                <input id="invite-link-input" type="text" readonly class="bg-transparent text-[9px] text-gray-400 font-mono flex-1 outline-none border-none">
+                                <button onclick="copyInviteLink()" class="ctrl-btn btn-surface" style="padding: 3px 6px;">
+                                    <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Guests / Participants -->
-                <div class="glass-card p-3 flex-1">
-                    <div class="flex items-center justify-between mb-3">
-                        <div class="flex items-center gap-2">
-                            <svg class="w-3.5 h-3.5 text-studio-accent-light" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                            <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">Participants</span>
+                <!-- Participants -->
+                <div class="left-panel flex-1 flex flex-col min-h-0">
+                    <div class="flex items-center justify-between mb-1">
+                        <div class="section-head" style="margin-bottom:0;">
+                            <svg class="w-3 h-3 text-studio-accent-light" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                            <span class="section-label">Participants</span>
                         </div>
-                        <span id="guest-count" class="text-[10px] text-gray-500 font-mono">0</span>
+                        <span id="guest-count" class="text-[9px] text-gray-500 font-mono">0</span>
                     </div>
-                    <div id="guest-list" class="space-y-0">
-                        <p class="text-gray-600 text-[11px] italic text-center py-4">No participants yet</p>
+                    <div id="guest-list" class="flex-1 overflow-y-auto scroll-thin space-y-0">
+                        <p class="text-gray-600 text-[10px] italic text-center py-3">No participants yet</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Column 2: AI Controls -->
-            <div class="flex flex-col gap-3 overflow-y-auto scroll-thin pr-1">
-                <!-- Mode Switching -->
-                <div class="glass-card p-3">
-                    <div class="flex items-center gap-2 mb-3">
-                        <svg class="w-3.5 h-3.5 text-studio-accent-light" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1.27A7 7 0 0 1 14 22h-4a7 7 0 0 1-6.73-3H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/></svg>
-                        <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">AI Mode</span>
+            <!-- ============ CENTER COLUMN (flex-grow) ============ -->
+            <div class="flex flex-col gap-2 min-h-0 overflow-hidden">
+
+                <!-- Confidence Monitor (top row, ~120px max) -->
+                <div class="glass-card flex-shrink-0" style="max-height:120px;">
+                    <div class="px-3 py-1.5 border-b border-studio-border flex items-center justify-between">
+                        <div class="flex items-center gap-1.5">
+                            <svg class="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14M5 18h8a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2z"/></svg>
+                            <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Confidence Monitor</span>
+                        </div>
+                        <!-- Recording controls inline -->
+                        <div class="flex items-center gap-2">
+                            <span id="rec-status" class="text-[9px] text-gray-500">Not recording</span>
+                            <button onclick="startRecording()" class="ctrl-btn btn-danger" id="rec-start-btn" style="padding:2px 6px;font-size:9px;">
+                                <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/></svg>
+                                Rec
+                            </button>
+                            <button onclick="stopRecording()" class="ctrl-btn btn-surface hidden" id="rec-stop-btn" style="padding:2px 6px;font-size:9px;">
+                                <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+                                Stop
+                            </button>
+                        </div>
                     </div>
-                    <div class="flex gap-2">
-                        <button onclick="setMode('passive')" class="mode-btn active" id="mode-passive">
-                            <svg class="w-4 h-4 mx-auto mb-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                            Passive
-                        </button>
-                        <button onclick="setMode('speech-to-speech')" class="mode-btn" id="mode-speech">
-                            <svg class="w-4 h-4 mx-auto mb-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
-                            Speech
-                        </button>
-                        <button onclick="setMode('ask-chatgpt')" class="mode-btn" id="mode-chatgpt">
-                            <svg class="w-4 h-4 mx-auto mb-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                            ChatGPT
-                        </button>
+                    <div class="px-3 py-1.5">
+                        <!-- Video preview container preserved for control.js -->
+                        <div id="video-preview" class="confidence-monitor scroll-thin-x" style="min-height:0;">
+                            <div id="mini-preview" class="monitor-thumb">
+                                <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14M5 18h8a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2z"/></svg>
+                                <div class="thumb-label">No feeds</div>
+                            </div>
+                        </div>
+                        <audio id="audio-monitor" style="display:none;"></audio>
                     </div>
-                    <div id="mode-description" class="text-[10px] text-gray-500 mt-2 text-center">Transcription only &mdash; ~$0.005/min</div>
                 </div>
 
-                <!-- Force AI Response -->
-                <div class="glass-card p-3">
-                    <button onclick="forceAIResponse()" class="ctrl-btn btn-accent w-full justify-center">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="13,2 3,14 12,14 11,22 21,10 12,10"/></svg>
-                        Force AI Response
-                    </button>
-                </div>
-
-                <!-- Voice Selection -->
-                <div class="glass-card p-3">
-                    <div class="flex items-center gap-2 mb-3">
-                        <svg class="w-3.5 h-3.5 text-studio-accent-light" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-                        <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">Voice</span>
+                <!-- Tabbed Panel (fills remaining space) -->
+                <div class="glass-card flex-1 flex flex-col min-h-0 overflow-hidden">
+                    <div class="tab-bar px-2 pt-1">
+                        <button class="tab-btn active" onclick="switchTab(event, 'tab-ai')">AI Controls</button>
+                        <button class="tab-btn" onclick="switchTab(event, 'tab-content')">Content</button>
+                        <button class="tab-btn" onclick="switchTab(event, 'tab-episodes')">Episodes</button>
+                        <button class="tab-btn" onclick="switchTab(event, 'tab-memory')">Memory</button>
+                        <button class="tab-btn" onclick="switchTab(event, 'tab-insights')">Insights</button>
                     </div>
-                    <select id="voice-select" onchange="selectVoice()" class="ctrl-select">
-                        <option value="coral">Coral</option>
-                        <option value="alloy">Alloy</option>
-                        <option value="ash">Ash</option>
-                        <option value="ballad">Ballad</option>
-                        <option value="echo">Echo</option>
-                        <option value="nova">Nova</option>
-                        <option value="sage">Sage</option>
-                        <option value="shimmer">Shimmer</option>
-                        <option value="verse">Verse</option>
-                    </select>
-                </div>
 
-                <!-- Provider Config -->
-                <div class="glass-card p-3">
-                    <div class="flex items-center gap-2 mb-3">
-                        <svg class="w-3.5 h-3.5 text-studio-accent-light" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                        <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">Providers</span>
-                    </div>
-                    <div class="space-y-2">
+                    <!-- Tab: AI Controls -->
+                    <div id="tab-ai" class="tab-panel active p-3 scroll-thin gap-3">
+                        <div class="grid grid-cols-2 gap-3">
+                            <!-- Voice Selection -->
+                            <div>
+                                <div class="section-head">
+                                    <svg class="w-3 h-3 text-studio-accent-light" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                                    <span class="section-label">Voice</span>
+                                </div>
+                                <select id="voice-select" onchange="selectVoice()" class="ctrl-select">
+                                    <option value="coral">Coral</option>
+                                    <option value="alloy">Alloy</option>
+                                    <option value="ash">Ash</option>
+                                    <option value="ballad">Ballad</option>
+                                    <option value="echo">Echo</option>
+                                    <option value="nova">Nova</option>
+                                    <option value="sage">Sage</option>
+                                    <option value="shimmer">Shimmer</option>
+                                    <option value="verse">Verse</option>
+                                </select>
+                            </div>
+                            <!-- Force AI Response -->
+                            <div>
+                                <div class="section-head">
+                                    <svg class="w-3 h-3 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="13,2 3,14 12,14 11,22 21,10 12,10"/></svg>
+                                    <span class="section-label">Quick Action</span>
+                                </div>
+                                <button onclick="forceAIResponse()" class="ctrl-btn btn-accent w-full justify-center">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="13,2 3,14 12,14 11,22 21,10 12,10"/></svg>
+                                    Force AI Response
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Providers row -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-[9px] text-gray-500 uppercase tracking-wider">TTS Provider</label>
+                                <select id="tts-provider" onchange="setTTSProvider()" class="ctrl-select mt-1">
+                                    <option value="openai">OpenAI</option>
+                                    <option value="elevenlabs">ElevenLabs</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-[9px] text-gray-500 uppercase tracking-wider">STT Provider</label>
+                                <select id="stt-provider" onchange="setSTTProvider()" class="ctrl-select mt-1">
+                                    <option value="openai">OpenAI</option>
+                                    <option value="elevenlabs">ElevenLabs</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- System Prompt -->
                         <div>
-                            <label class="text-[10px] text-gray-500 uppercase tracking-wider">TTS Provider</label>
-                            <select id="tts-provider" onchange="setTTSProvider()" class="ctrl-select mt-1">
-                                <option value="openai">OpenAI</option>
-                                <option value="elevenlabs">ElevenLabs</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="text-[10px] text-gray-500 uppercase tracking-wider">STT Provider</label>
-                            <select id="stt-provider" onchange="setSTTProvider()" class="ctrl-select mt-1">
-                                <option value="openai">OpenAI</option>
-                                <option value="elevenlabs">ElevenLabs</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- System Prompt -->
-                <div class="glass-card p-3">
-                    <div class="flex items-center gap-2 mb-3">
-                        <svg class="w-3.5 h-3.5 text-studio-accent-light" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
-                        <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">System Prompt</span>
-                    </div>
-                    <textarea id="system-prompt" class="ctrl-textarea" rows="4" placeholder="Override the AI co-host instructions..."></textarea>
-                    <button onclick="updateSystemPrompt()" class="ctrl-btn btn-surface w-full justify-center mt-2">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20,6 9,17 4,12"/></svg>
-                        Update Prompt
-                    </button>
-                </div>
-            </div>
-
-            <!-- Column 3: Live Transcript -->
-            <div class="flex flex-col gap-3 overflow-hidden">
-                <div class="glass-card flex-1 flex flex-col overflow-hidden">
-                    <div class="px-3 py-2 border-b border-studio-border flex items-center justify-between flex-shrink-0">
-                        <div class="flex items-center gap-2">
-                            <svg class="w-3.5 h-3.5 text-studio-accent-light" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
-                            <span class="text-xs font-semibold tracking-wide uppercase text-gray-400">Live Transcript</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span id="transcript-count" class="text-[10px] text-gray-500 font-mono">0 entries</span>
-                            <button onclick="exportTranscript()" class="ctrl-btn btn-surface" style="padding: 4px 8px; font-size: 10px;">
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                                Export
+                            <div class="section-head">
+                                <svg class="w-3 h-3 text-studio-accent-light" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+                                <span class="section-label">System Prompt</span>
+                            </div>
+                            <textarea id="system-prompt" class="ctrl-textarea" rows="3" placeholder="Override the AI co-host instructions..."></textarea>
+                            <button onclick="updateSystemPrompt()" class="ctrl-btn btn-surface w-full justify-center mt-1.5" style="padding:4px 8px;font-size:0.65rem;">
+                                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20,6 9,17 4,12"/></svg>
+                                Update Prompt
                             </button>
                         </div>
-                    </div>
-                    <div id="transcript-box" class="flex-1 overflow-y-auto scroll-thin p-3 space-y-0 text-sm text-gray-300">
-                        <p class="text-gray-600 italic text-[11px] text-center py-8">Transcript will appear as participants speak...</p>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Column 4: AI Insights + Cost -->
-            <div class="flex flex-col gap-3 overflow-y-auto scroll-thin pl-1">
-                <!-- Session Cost Tracking -->
-                <div class="glass-card p-3">
-                    <div class="flex items-center gap-2 mb-3">
-                        <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                        <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">Session Cost</span>
-                    </div>
-                    <div class="text-center mb-2">
-                        <div id="total-cost" class="cost-value">$0.0000</div>
-                        <div id="cost-rate" class="text-[10px] text-gray-500 mt-1">Estimated rate: ~$0.005/min</div>
-                    </div>
-                    <div id="cost-breakdown" class="space-y-1">
-                        <div class="flex justify-between text-[10px]">
-                            <span class="text-gray-500">STT</span>
-                            <span id="cost-stt" class="font-mono text-gray-400">$0.0000</span>
-                        </div>
-                        <div class="flex justify-between text-[10px]">
-                            <span class="text-gray-500">LLM</span>
-                            <span id="cost-llm" class="font-mono text-gray-400">$0.0000</span>
-                        </div>
-                        <div class="flex justify-between text-[10px]">
-                            <span class="text-gray-500">TTS</span>
-                            <span id="cost-tts" class="font-mono text-gray-400">$0.0000</span>
+                        <!-- Session Cost (compact inline) -->
+                        <div class="flex items-center gap-4 p-2 rounded-lg bg-studio-bg border border-studio-border">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-3 h-3 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                                <div id="total-cost" class="cost-value" style="font-size:0.95rem;">$0.0000</div>
+                            </div>
+                            <div id="cost-rate" class="text-[9px] text-gray-500">Estimated rate: ~$0.005/min</div>
+                            <div id="cost-breakdown" class="flex gap-3 ml-auto text-[9px]">
+                                <div><span class="text-gray-500">STT </span><span id="cost-stt" class="font-mono text-gray-400">$0.0000</span></div>
+                                <div><span class="text-gray-500">LLM </span><span id="cost-llm" class="font-mono text-gray-400">$0.0000</span></div>
+                                <div><span class="text-gray-500">TTS </span><span id="cost-tts" class="font-mono text-gray-400">$0.0000</span></div>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Observer Insights -->
-                <div class="glass-card p-3 flex-1 flex flex-col overflow-hidden">
-                    <div class="flex items-center justify-between mb-3 flex-shrink-0">
-                        <div class="flex items-center gap-2">
-                            <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                            <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">AI Insights</span>
+                    <!-- Tab: Content Pipeline -->
+                    <div id="tab-content" class="tab-panel p-3 scroll-thin gap-3">
+                        <div class="section-head">
+                            <svg class="w-3 h-3 text-pink-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+                            <span class="section-label">Content Pipeline</span>
                         </div>
-                        <span id="insights-count" class="text-[10px] text-gray-500 font-mono">0</span>
-                    </div>
-                    <div id="insights-list" class="flex-1 overflow-y-auto scroll-thin space-y-2">
-                        <p class="text-gray-600 text-[11px] italic text-center py-4">Observer insights will appear here...</p>
-                    </div>
-                </div>
-
-                <!-- Suggested Topics -->
-                <div class="glass-card p-3">
-                    <div class="flex items-center gap-2 mb-3">
-                        <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 12 18.469a3.374 3.374 0 0 0-.835-1.222l-.548-.547z"/></svg>
-                        <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">Suggested Topics</span>
-                    </div>
-                    <div id="suggested-topics" class="space-y-1">
-                        <p class="text-gray-600 text-[11px] italic text-center py-2">Topics will be suggested as conversation progresses...</p>
-                    </div>
-                </div>
-
-                <!-- Memory Search -->
-                <div class="glass-card p-3">
-                    <div class="flex items-center gap-2 mb-3">
-                        <svg class="w-3.5 h-3.5 text-violet-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                        <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">Memory Search</span>
-                    </div>
-                    <div class="flex gap-2 mb-2">
-                        <input id="memory-query" type="text" placeholder="Search past episodes..." class="ctrl-input flex-1">
-                        <button onclick="searchMemory()" class="ctrl-btn btn-surface">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                        </button>
-                    </div>
-                    <div id="memory-results" class="space-y-1 max-h-40 overflow-y-auto scroll-thin">
-                        <p class="text-gray-600 text-[11px] italic text-center py-2">Search across all episode memories...</p>
-                    </div>
-                </div>
-
-                <!-- Episode History -->
-                <div class="glass-card p-3">
-                    <div class="flex items-center justify-between mb-3">
-                        <div class="flex items-center gap-2">
-                            <svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
-                            <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">Episode History</span>
-                        </div>
-                        <button onclick="loadEpisodes()" class="ctrl-btn btn-surface" style="padding:2px 8px;font-size:10px;">Refresh</button>
-                    </div>
-                    <div id="episode-list" class="space-y-1 max-h-48 overflow-y-auto scroll-thin">
-                        <p class="text-gray-600 text-[11px] italic text-center py-2">Loading episodes...</p>
-                    </div>
-                </div>
-
-                <!-- Content Pipeline -->
-                <div class="glass-card p-3">
-                    <div class="flex items-center gap-2 mb-3">
-                        <svg class="w-3.5 h-3.5 text-pink-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
-                        <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">Content Pipeline</span>
-                    </div>
-                    <div class="space-y-2">
-                        <div>
-                            <label class="text-[10px] text-gray-500 uppercase tracking-wider">Episode</label>
-                            <select id="content-episode-select" class="ctrl-select mt-1" onchange="onContentEpisodeChange()">
-                                <option value="">Select an episode...</option>
-                            </select>
-                        </div>
-                        <div class="flex gap-2">
-                            <button onclick="generateContent('blog-post')" class="ctrl-btn btn-surface flex-1 justify-center" id="gen-blog-btn">
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
-                                Blog
-                            </button>
-                            <button onclick="generateContent('show-notes')" class="ctrl-btn btn-surface flex-1 justify-center" id="gen-notes-btn">
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-                                Notes
-                            </button>
-                            <button onclick="generateContent('social-clips')" class="ctrl-btn btn-surface flex-1 justify-center" id="gen-clips-btn">
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16,6 12,2 8,6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-                                Clips
-                            </button>
-                        </div>
-                        <div id="content-status" class="hidden text-[10px] text-gray-500 text-center py-1">
-                            <span class="spinner"></span> Generating...
-                        </div>
-                        <div id="content-result" class="hidden">
-                            <div class="relative">
-                                <pre id="content-output" class="bg-studio-bg rounded-lg p-3 text-[11px] text-gray-300 font-mono overflow-y-auto scroll-thin max-h-64 whitespace-pre-wrap"></pre>
-                                <div class="absolute top-2 right-2 flex gap-1">
-                                    <button onclick="copyContent()" class="ctrl-btn btn-surface" style="padding:3px 6px;font-size:9px;" title="Copy">
-                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                                    </button>
-                                    <button onclick="exportContent()" class="ctrl-btn btn-surface" style="padding:3px 6px;font-size:9px;" title="Export .md">
-                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                                    </button>
+                        <div class="space-y-2">
+                            <div>
+                                <label class="text-[9px] text-gray-500 uppercase tracking-wider">Episode</label>
+                                <select id="content-episode-select" class="ctrl-select mt-1" onchange="onContentEpisodeChange()">
+                                    <option value="">Select an episode...</option>
+                                </select>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="generateContent('blog-post')" class="ctrl-btn btn-surface flex-1 justify-center" id="gen-blog-btn" style="font-size:0.65rem;">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+                                    Blog
+                                </button>
+                                <button onclick="generateContent('show-notes')" class="ctrl-btn btn-surface flex-1 justify-center" id="gen-notes-btn" style="font-size:0.65rem;">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                                    Notes
+                                </button>
+                                <button onclick="generateContent('social-clips')" class="ctrl-btn btn-surface flex-1 justify-center" id="gen-clips-btn" style="font-size:0.65rem;">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16,6 12,2 8,6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                                    Clips
+                                </button>
+                            </div>
+                            <div id="content-status" class="hidden text-[10px] text-gray-500 text-center py-1">
+                                <span class="spinner"></span> Generating...
+                            </div>
+                            <div id="content-result" class="hidden">
+                                <div class="relative">
+                                    <pre id="content-output" class="bg-studio-bg rounded-lg p-3 text-[11px] text-gray-300 font-mono overflow-y-auto scroll-thin max-h-64 whitespace-pre-wrap"></pre>
+                                    <div class="absolute top-2 right-2 flex gap-1">
+                                        <button onclick="copyContent()" class="ctrl-btn btn-surface" style="padding:3px 6px;font-size:9px;" title="Copy">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                        </button>
+                                        <button onclick="exportContent()" class="ctrl-btn btn-surface" style="padding:3px 6px;font-size:9px;" title="Export .md">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Recording -->
-                <div class="glass-card p-3">
-                    <div class="flex items-center gap-2 mb-3">
-                        <svg class="w-3.5 h-3.5 text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
-                        <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">Recording</span>
+                    <!-- Tab: Episodes -->
+                    <div id="tab-episodes" class="tab-panel p-3 scroll-thin gap-3">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="section-head" style="margin-bottom:0;">
+                                <svg class="w-3 h-3 text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+                                <span class="section-label">Episode History</span>
+                            </div>
+                            <button onclick="loadEpisodes()" class="ctrl-btn btn-surface" style="padding:2px 8px;font-size:9px;">Refresh</button>
+                        </div>
+                        <div id="episode-list" class="space-y-1 overflow-y-auto scroll-thin flex-1">
+                            <p class="text-gray-600 text-[11px] italic text-center py-2">Loading episodes...</p>
+                        </div>
                     </div>
-                    <div class="flex gap-2">
-                        <button onclick="startRecording()" class="ctrl-btn btn-danger flex-1 justify-center" id="rec-start-btn">
-                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/></svg>
-                            Start
-                        </button>
-                        <button onclick="stopRecording()" class="ctrl-btn btn-surface flex-1 justify-center hidden" id="rec-stop-btn">
-                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
-                            Stop
-                        </button>
+
+                    <!-- Tab: Memory -->
+                    <div id="tab-memory" class="tab-panel p-3 scroll-thin gap-3">
+                        <div class="section-head">
+                            <svg class="w-3 h-3 text-violet-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <span class="section-label">Memory Search</span>
+                        </div>
+                        <div class="flex gap-2 mb-2">
+                            <input id="memory-query" type="text" placeholder="Search past episodes..." class="ctrl-input flex-1">
+                            <button onclick="searchMemory()" class="ctrl-btn btn-surface">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            </button>
+                        </div>
+                        <div id="memory-results" class="space-y-1 overflow-y-auto scroll-thin flex-1">
+                            <p class="text-gray-600 text-[11px] italic text-center py-2">Search across all episode memories...</p>
+                        </div>
                     </div>
-                    <div id="rec-status" class="text-[10px] text-gray-500 mt-2 text-center">Not recording</div>
+
+                    <!-- Tab: Insights -->
+                    <div id="tab-insights" class="tab-panel p-3 scroll-thin gap-3">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="section-head" style="margin-bottom:0;">
+                                <svg class="w-3 h-3 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                                <span class="section-label">AI Insights</span>
+                            </div>
+                            <span id="insights-count" class="text-[9px] text-gray-500 font-mono">0</span>
+                        </div>
+                        <div id="insights-list" class="flex-1 overflow-y-auto scroll-thin space-y-2">
+                            <p class="text-gray-600 text-[11px] italic text-center py-4">Observer insights will appear here...</p>
+                        </div>
+                        <!-- Suggested Topics -->
+                        <div class="mt-3 pt-3 border-t border-studio-border">
+                            <div class="section-head">
+                                <svg class="w-3 h-3 text-cyan-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 12 18.469a3.374 3.374 0 0 0-.835-1.222l-.548-.547z"/></svg>
+                                <span class="section-label">Suggested Topics</span>
+                            </div>
+                            <div id="suggested-topics" class="space-y-1">
+                                <p class="text-gray-600 text-[10px] italic text-center py-1">Topics will be suggested as conversation progresses...</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
+
+            <!-- ============ RIGHT COLUMN (280px) — Live Transcript ============ -->
+            <div class="glass-card flex flex-col overflow-hidden">
+                <div class="px-3 py-1.5 border-b border-studio-border flex items-center justify-between flex-shrink-0">
+                    <div class="flex items-center gap-1.5">
+                        <svg class="w-3 h-3 text-studio-accent-light" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+                        <span class="text-[10px] font-semibold tracking-wide uppercase text-gray-400">Transcript</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span id="transcript-count" class="text-[9px] text-gray-500 font-mono">0 entries</span>
+                        <button onclick="exportTranscript()" class="ctrl-btn btn-surface" style="padding: 2px 6px; font-size: 9px;">
+                            <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <div id="transcript-box" class="flex-1 overflow-y-auto scroll-thin p-2 space-y-0 text-sm text-gray-300">
+                    <p class="text-gray-600 italic text-[10px] text-center py-6">Transcript will appear as participants speak...</p>
+                </div>
+            </div>
+
         </div>
     </main>
 
@@ -796,16 +817,24 @@
     </script>
     <script src="/static/js/control.js"></script>
     <script>
+        // Tab switching
+        function switchTab(event, tabId) {
+            // Deactivate all tabs
+            document.querySelectorAll('.tab-btn').forEach(function(btn) { btn.classList.remove('active'); });
+            document.querySelectorAll('.tab-panel').forEach(function(panel) { panel.classList.remove('active'); });
+            // Activate selected
+            event.currentTarget.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }
+
         // Collapsible panels for mobile
         (function() {
             if (window.innerWidth >= 768) return;
 
             document.querySelectorAll('.glass-card').forEach(function(card) {
-                // Find the panel heading row (first child div with section title)
                 var heading = card.querySelector(':scope > div:first-child, :scope > .flex:first-child');
                 if (!heading || heading.id === 'transcript-box') return;
 
-                // Determine the panel body: everything after the heading
                 var bodyElements = [];
                 var sibling = heading.nextElementSibling;
                 while (sibling) {
@@ -814,13 +843,11 @@
                 }
                 if (bodyElements.length === 0) return;
 
-                // Wrap body elements in a collapsible container
                 var wrapper = document.createElement('div');
                 wrapper.className = 'panel-body';
                 bodyElements.forEach(function(el) { wrapper.appendChild(el); });
                 card.appendChild(wrapper);
 
-                // Convert heading to a toggle button
                 var toggle = document.createElement('button');
                 toggle.className = 'panel-toggle';
                 toggle.type = 'button';
