@@ -24,16 +24,20 @@ except ImportError:
 
 
 def _build_mem0_config() -> dict:
-    """Build the Mem0 configuration dict pointing at our local ChromaDB."""
-    chroma_path = Path("./data/mem0_chroma")
-    chroma_path.mkdir(parents=True, exist_ok=True)
+    """Build the Mem0 configuration dict using Qdrant (local file-based).
+
+    ChromaDB's pydantic v1 dependency is broken on Python 3.14+, so we use
+    Qdrant's built-in local storage instead — no server required.
+    """
+    qdrant_path = Path("./data/mem0_qdrant")
+    qdrant_path.mkdir(parents=True, exist_ok=True)
 
     return {
         "vector_store": {
-            "provider": "chroma",
+            "provider": "qdrant",
             "config": {
                 "collection_name": "podcast_memories",
-                "path": str(chroma_path),
+                "path": str(qdrant_path),
             },
         },
         "embedder": {

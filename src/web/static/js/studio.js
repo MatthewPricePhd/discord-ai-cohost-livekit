@@ -1,7 +1,14 @@
 /**
  * Studio View — LiveKit room connection and media management.
  */
-const { Room, RoomEvent, Track, VideoPresets, ConnectionState, ConnectionQuality } = LivekitClient;
+const { Room, RoomEvent, Track, VideoPresets, ConnectionState, ConnectionQuality, ParticipantKind } = LivekitClient;
+
+function isAgentParticipant(participant) {
+    // Detect AI agent by participant kind (preferred) or identity prefix
+    if (participant.kind === ParticipantKind.AGENT) return true;
+    if (participant.identity && participant.identity.startsWith("agent-")) return true;
+    return false;
+}
 
 let room = null;
 let micEnabled = true;
@@ -77,7 +84,7 @@ function onDisconnected() {
 
 function onParticipantConnected(participant) {
     // Agent participant gets the AI tile treatment
-    if (participant.identity === "podcast-cohost-agent") {
+    if (isAgentParticipant(participant)) {
         return; // AI uses the static tile, tracks attached there
     }
     addParticipantTile(participant);
@@ -98,7 +105,7 @@ function onParticipantDisconnected(participant) {
 }
 
 function onTrackSubscribed(track, publication, participant) {
-    if (participant.identity === "podcast-cohost-agent") {
+    if (isAgentParticipant(participant)) {
         // AI co-host: attach audio only (no video), animate avatar
         if (track.kind === Track.Kind.Audio) {
             const el = track.attach();
@@ -127,7 +134,7 @@ function onTrackUnsubscribed(track, publication, participant) {
 
 function onActiveSpeakersChanged(speakers) {
     const aiTile = document.getElementById("ai-tile-wrapper");
-    const isAISpeaking = speakers.some((s) => s.identity === "podcast-cohost-agent");
+    const isAISpeaking = speakers.some((s) => isAgentParticipant(s));
     if (isAISpeaking) {
         aiTile.classList.add("ai-speaking");
     } else {
@@ -140,18 +147,22 @@ function onDataReceived(payload, participant, kind, topic) {
     try {
         const msg = JSON.parse(decoder.decode(payload));
         if (msg.type === "chat") {
-            appendTranscript(participant?.name || "Unknown", msg.message);
+            appendTranscript(getDisplayName(participant), msg.message);
         }
     } catch (_) {
         // Ignore malformed data
     }
 }
 
+function getDisplayName(participant) {
+    if (participant && isAgentParticipant(participant)) return "AI Co-Host";
+    return participant?.name || participant?.identity || "Unknown";
+}
+
 function onTranscriptionReceived(segments, participant) {
     for (const seg of segments) {
         if (seg.final) {
-            const name = participant?.name || participant?.identity || "Unknown";
-            appendTranscript(name, seg.text);
+            appendTranscript(getDisplayName(participant), seg.text);
         }
     }
 }

@@ -409,7 +409,7 @@ function updateParticipantList() {
             identity: p.identity,
             name: p.name || p.identity,
             isLocal: false,
-            isAgent: p.identity === "podcast-cohost-agent",
+            isAgent: (p.kind !== undefined && p.kind === 2) || (p.identity && p.identity.startsWith("agent-")),
             metadata: p.metadata,
         });
     });
