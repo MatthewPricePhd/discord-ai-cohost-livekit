@@ -21,6 +21,42 @@ class StudioApp:
         self.web_server = None
         self.running = False
         self.current_mode = "passive"
+        self.session_start_time = None
+        # Placeholders for features that reference the old app structure
+        self.openai_client = None
+        self.observer_agent = None
+        self.discord_client = None
+
+    async def set_mode(self, mode: str) -> str:
+        """Set the AI operating mode."""
+        if mode in ("passive", "speech-to-speech", "ask-chatgpt"):
+            self.current_mode = mode
+            logger.info("Mode changed", mode=mode)
+        return self.current_mode
+
+    async def toggle_mode(self) -> str:
+        """Toggle between passive and speech-to-speech mode."""
+        new_mode = "speech-to-speech" if self.current_mode == "passive" else "passive"
+        return await self.set_mode(new_mode)
+
+    async def force_ai_response(self):
+        """Force the AI to generate a response (placeholder)."""
+        logger.info("Force AI response triggered")
+
+    async def start_transcription(self) -> bool:
+        """Start transcription (placeholder)."""
+        logger.info("Transcription start requested")
+        return True
+
+    async def stop_transcription(self) -> bool:
+        """Stop transcription (placeholder)."""
+        logger.info("Transcription stop requested")
+        return True
+
+    async def generate_tts(self, text: str) -> bytes:
+        """Generate TTS audio (placeholder)."""
+        logger.info("TTS generation requested", text_length=len(text))
+        return b""
 
     async def start(self):
         """Start the web server."""
