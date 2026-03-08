@@ -1,5 +1,5 @@
 """
-Configuration management for Discord AI Co-Host Bot
+Configuration management for LiveKit Podcast Studio
 """
 import os
 from pathlib import Path
@@ -19,8 +19,10 @@ class Settings(BaseSettings):
         extra="ignore"
     )
     
-    # Discord Configuration
-    discord_bot_token: str = Field(..., description="Discord bot token")
+    # LiveKit Configuration
+    livekit_url: str = Field(..., description="LiveKit server URL (wss://...)")
+    livekit_api_key: str = Field(..., description="LiveKit API key")
+    livekit_api_secret: str = Field(..., description="LiveKit API secret")
 
     # OpenAI Configuration
     openai_api_key: str = Field(..., description="OpenAI API key")
