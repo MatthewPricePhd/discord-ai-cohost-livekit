@@ -131,19 +131,18 @@
                 <label class="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider">Your Name</label>
                 <input id="host-name" type="text" value="Host" class="input-field" placeholder="e.g., Matthew">
             </div>
-            <div class="flex items-center gap-2 mb-3">
-                <input type="checkbox" id="open-control" class="accent-indigo-500 w-4 h-4 rounded">
-                <label for="open-control" class="text-xs text-gray-400 cursor-pointer">Open Control Room instead of Studio</label>
-            </div>
             <button id="create-btn" onclick="createAndJoin()" class="create-btn">
-                Create &amp; Join Studio
+                Create Session
             </button>
+            <p class="text-center text-[11px] text-gray-500 mt-2">
+                Opens Control Room here + Studio in a new tab
+            </p>
         </div>
 
         <div id="error" class="mt-4 text-red-400 text-sm hidden bg-red-500/10 border border-red-500/20 rounded-lg p-3"></div>
 
-        <p class="text-center text-[11px] text-gray-600 mt-6">
-            AI Co-Host will join automatically once the room is created
+        <p class="text-center text-[11px] text-gray-600 mt-4">
+            AI Co-Host joins automatically
         </p>
     </div>
 
@@ -170,15 +169,11 @@
                 });
                 const data = await res.json();
                 if (data.success) {
-                    // Check if user wants Control Room instead
-                    const goToControl = document.getElementById("open-control")?.checked;
-                    if (goToControl) {
-                        btn.innerHTML = '<span class="spinner"></span>Opening control room...';
-                        window.location.href = "/control?token=" + data.host_token;
-                    } else {
-                        btn.innerHTML = '<span class="spinner"></span>Joining studio...';
-                        window.location.href = "/studio/join?token=" + data.host_token;
-                    }
+                    btn.innerHTML = '<span class="spinner"></span>Launching session...';
+                    // Open Studio in a new tab
+                    window.open("/studio/join?token=" + data.host_token, "_blank");
+                    // Navigate this tab to Control Room
+                    window.location.href = "/control?token=" + data.host_token;
                 } else {
                     showError(data.detail || "Failed to create room");
                     resetButton();
